@@ -32,12 +32,11 @@ export interface ComponentDefinition<P> {
   template?: (props: P) => VNode<any>;
 }
 
-// deno-lint-ignore no-explicit-any
-export function component<T extends new (...args: unknown[]) => any>(
-  definition: ComponentDefinition<InstanceType<T>>,
+export function component<T extends object>(
+  definition: ComponentDefinition<T>,
 ): (
-  value: T,
-  context: ClassDecoratorContext<T>,
+  value: new (...args: unknown[]) => T,
+  context: ClassDecoratorContext,
 ) => void {
   return (value, context) => {
     const subscriptions = new WeakMap<object, VoidFunction>();
@@ -49,7 +48,7 @@ export function component<T extends new (...args: unknown[]) => any>(
     });
 
     class WhiteBox extends HTMLElement {
-      readonly #props: InstanceType<T>;
+      readonly #props: T;
 
       static observedAttributes = [...attributes ?? []];
 
