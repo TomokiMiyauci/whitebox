@@ -4,14 +4,14 @@ export function reactive(
   _: unknown,
   context: ClassFieldDecoratorContext<object>,
 ): void {
-  context.addInitializer(function () {
+  context.addInitializer(function (): void {
     observe(this, context.name);
   });
 }
 
 const ATTR = Symbol("attribute");
 
-export function attr(_: unknown, context: ClassFieldDecoratorContext) {
+export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
   const { name, metadata } = context;
 
   if (ATTR in metadata) {
@@ -38,7 +38,7 @@ export function component(
     };
   },
   context: ClassDecoratorContext,
-) {
+): void {
   const registry = context.metadata[ATTR];
   const attributes = registry instanceof Set ? registry : null;
 
@@ -57,7 +57,7 @@ export function component(
       name,
       oldValue,
       newValue,
-    ) {
+    ): void {
       original.attributeChangedCallback?.call(this, name, oldValue, newValue);
 
       if (attributes.has(name)) {

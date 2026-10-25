@@ -27,7 +27,7 @@ export class Reactive {
     };
   }
 
-  notify(target: object) {
+  notify(target: object): void {
     const listeners = this.subscribers.get(target);
 
     if (!listeners) return;
@@ -46,11 +46,11 @@ export class Reactive {
       configurable: true,
       enumerable: true,
 
-      get() {
+      get(): unknown {
         return value;
       },
 
-      set(next: unknown) {
+      set(next: unknown): void {
         if (Object.is(value, next)) return;
 
         value = next;

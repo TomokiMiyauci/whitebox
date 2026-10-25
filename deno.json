@@ -17,5 +17,12 @@
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true
+  },
+  "lint": {
+    "rules": {
+      "include": [
+        "explicit-function-return-type"
+      ]
+    }
   }
 }
