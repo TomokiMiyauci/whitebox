@@ -27,24 +27,30 @@ export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
   }
 }
 
-export interface ComponentDefinition {
-  template?: (this: any) => VNode<any>;
+export interface ComponentDefinition<P> {
+  template?: (props: P) => VNode<any>;
 }
 
-export function component(definition?: ComponentDefinition): (
-  value: {
-    observedAttributes?: string[];
-    prototype: HTMLElement & {
-      attributeChangedCallback?: (
-        name: string,
-        oldValue: string | null,
-        newValue: string | null,
-      ) => void;
-      connectedCallback?: () => void;
-      disconnectedCallback?: () => void;
-    };
-  },
-  context: ClassDecoratorContext,
+interface Element {
+  observedAttributes?: string[];
+  prototype: HTMLElement & {
+    attributeChangedCallback?: (
+      name: string,
+      oldValue: string | null,
+      newValue: string | null,
+    ) => void;
+    connectedCallback?: () => void;
+    disconnectedCallback?: () => void;
+  };
+
+  new (...args: unknown[]): unknown;
+}
+
+export function component<T extends Element>(
+  definition?: ComponentDefinition<InstanceType<T>>,
+): (
+  value: T,
+  context: ClassDecoratorContext<T>,
 ) => void {
   return (value, context) => {
     const subscriptions = new WeakMap<HTMLElement, VoidFunction>();
@@ -67,7 +73,7 @@ export function component(definition?: ComponentDefinition): (
       }
 
       const update = () => {
-        render(definition?.template?.call(this), this);
+        render(definition?.template?.(this as InstanceType<T>), this);
       };
 
       const unsubscribe = subscribe(this, update);
