@@ -1,4 +1,5 @@
-import { observe } from "./default.ts";
+import { observe, subscribe } from "./default.ts";
+import { render, type VNode } from "preact";
 
 export function reactive(
   _: unknown,
@@ -26,7 +27,11 @@ export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
   }
 }
 
-export function component(
+export interface ComponentDefinition {
+  template?: (this: any) => VNode<any>;
+}
+
+export function component(definition?: ComponentDefinition): (
   value: {
     observedAttributes?: string[];
     prototype: HTMLElement & {
@@ -35,34 +40,66 @@ export function component(
         oldValue: string | null,
         newValue: string | null,
       ) => void;
+      connectedCallback?: () => void;
+      disconnectedCallback?: () => void;
     };
   },
   context: ClassDecoratorContext,
-): void {
-  const registry = context.metadata[ATTR];
-  const attributes = registry instanceof Set ? registry : null;
-
-  if (attributes) {
+) => void {
+  return (value, context) => {
+    const subscriptions = new WeakMap<HTMLElement, VoidFunction>();
     const original = {
       observedAttributes: value.observedAttributes ?? [],
       attributeChangedCallback: value.prototype.attributeChangedCallback,
+      connectedCallback: value.prototype.connectedCallback,
+      disconnectedCallback: value.prototype.disconnectedCallback,
     };
 
-    value.observedAttributes = [
-      ...new Set([...original.observedAttributes, ...attributes]),
-    ];
+    const registry = context.metadata[ATTR];
+    const attributes = registry instanceof Set ? registry : null;
 
-    value.prototype.attributeChangedCallback = function (
-      this,
-      name,
-      oldValue,
-      newValue,
-    ): void {
-      original.attributeChangedCallback?.call(this, name, oldValue, newValue);
+    value.prototype.connectedCallback = function (): void {
+      original.connectedCallback?.call(this);
 
-      if (attributes.has(name)) {
-        Reflect.set(this, name, newValue);
+      // Prevent duplicate subscription
+      if (subscriptions.has(this)) {
+        return;
       }
+
+      const update = () => {
+        render(definition?.template?.call(this), this);
+      };
+
+      const unsubscribe = subscribe(this, update);
+      subscriptions.set(this, unsubscribe);
+      update();
     };
-  }
+
+    value.prototype.disconnectedCallback = function (): void {
+      original.disconnectedCallback?.call(this);
+
+      const unsubscribe = subscriptions.get(this);
+      unsubscribe?.();
+      subscriptions.delete(this);
+    };
+
+    if (attributes) {
+      value.observedAttributes = [
+        ...new Set([...original.observedAttributes, ...attributes]),
+      ];
+
+      value.prototype.attributeChangedCallback = function (
+        this,
+        name,
+        oldValue,
+        newValue,
+      ): void {
+        original.attributeChangedCallback?.call(this, name, oldValue, newValue);
+
+        if (attributes.has(name)) {
+          Reflect.set(this, name, newValue);
+        }
+      };
+    }
+  };
 }
