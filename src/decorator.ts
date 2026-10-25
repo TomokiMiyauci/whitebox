@@ -28,84 +28,74 @@ export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
 }
 
 export interface ComponentDefinition<P> {
+  name: string;
   template?: (props: P) => VNode<any>;
 }
 
-interface Element {
-  observedAttributes?: string[];
-  prototype: HTMLElement & {
-    attributeChangedCallback?: (
-      name: string,
-      oldValue: string | null,
-      newValue: string | null,
-    ) => void;
-    connectedCallback?: () => void;
-    disconnectedCallback?: () => void;
-  };
-
-  new (...args: unknown[]): unknown;
-}
-
-export function component<T extends Element>(
-  definition?: ComponentDefinition<InstanceType<T>>,
+// deno-lint-ignore no-explicit-any
+export function component<T extends new (...args: unknown[]) => any>(
+  definition: ComponentDefinition<InstanceType<T>>,
 ): (
   value: T,
   context: ClassDecoratorContext<T>,
 ) => void {
   return (value, context) => {
-    const subscriptions = new WeakMap<HTMLElement, VoidFunction>();
-    const original = {
-      observedAttributes: value.observedAttributes ?? [],
-      attributeChangedCallback: value.prototype.attributeChangedCallback,
-      connectedCallback: value.prototype.connectedCallback,
-      disconnectedCallback: value.prototype.disconnectedCallback,
-    };
-
+    const subscriptions = new WeakMap<object, VoidFunction>();
     const registry = context.metadata[ATTR];
     const attributes = registry instanceof Set ? registry : null;
 
-    value.prototype.connectedCallback = function (): void {
-      original.connectedCallback?.call(this);
+    context.addInitializer(function (): void {
+      customElements.define(definition.name, this as CustomElementConstructor);
+    });
 
-      // Prevent duplicate subscription
-      if (subscriptions.has(this)) {
-        return;
+    class WhiteBox extends HTMLElement {
+      readonly #props: InstanceType<T>;
+
+      static observedAttributes = [...attributes ?? []];
+
+      constructor(...args: unknown[]) {
+        super();
+
+        this.#props = new value(...args);
       }
 
-      const update = () => {
-        render(definition?.template?.(this as InstanceType<T>), this);
-      };
-
-      const unsubscribe = subscribe(this, update);
-      subscriptions.set(this, unsubscribe);
-      update();
-    };
-
-    value.prototype.disconnectedCallback = function (): void {
-      original.disconnectedCallback?.call(this);
-
-      const unsubscribe = subscriptions.get(this);
-      unsubscribe?.();
-      subscriptions.delete(this);
-    };
-
-    if (attributes) {
-      value.observedAttributes = [
-        ...new Set([...original.observedAttributes, ...attributes]),
-      ];
-
-      value.prototype.attributeChangedCallback = function (
-        this,
-        name,
-        oldValue,
-        newValue,
-      ): void {
-        original.attributeChangedCallback?.call(this, name, oldValue, newValue);
-
-        if (attributes.has(name)) {
-          Reflect.set(this, name, newValue);
+      connectedCallback(): void {
+        // Prevent duplicate subscription
+        if (subscriptions.has(this)) {
+          return;
         }
-      };
+
+        const update = () => {
+          render(
+            definition?.template?.(this.#props),
+            this as HTMLElement,
+          );
+        };
+
+        const unsubscribe = subscribe(this.#props, update);
+        subscriptions.set(this, unsubscribe);
+        update();
+      }
+
+      disconnectedCallback(): void {
+        const unsubscribe = subscriptions.get(this);
+        unsubscribe?.();
+        subscriptions.delete(this);
+      }
+
+      attributeChangedCallback(
+        name: string,
+        oldValue: string | null,
+        newValue: string | null,
+      ): void {
+        if (oldValue === newValue || !attributes?.has(name)) {
+          return;
+        }
+
+        Reflect.set(this.#props, name, newValue);
+      }
     }
+
+    return WhiteBox;
   };
 }
