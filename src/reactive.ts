@@ -5,7 +5,11 @@ export interface Subscriber {
 export interface Registry extends WeakMap<WeakKey, Set<Subscriber>> {}
 
 export class Reactive {
-  constructor(private subscribers: Registry) {}
+  constructor(subscribers: Registry) {
+    this.subscribers = subscribers;
+  }
+
+  private subscribers: Registry;
   subscribe(target: object, subscriber: Subscriber): VoidFunction {
     const listeners = this.subscribers.getOrInsertComputed(
       target,
