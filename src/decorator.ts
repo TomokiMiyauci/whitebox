@@ -34,8 +34,8 @@ export function attr(
   );
 }
 
-export function component<T extends object>(definition: ComponentDefinition): (
-  value: new (...args: unknown[]) => T,
+export function component(name: string): (
+  value: new (...args: unknown[]) => object,
   context: ClassDecoratorContext,
 ) => void {
   return (value, context) => {
@@ -51,11 +51,11 @@ export function component<T extends object>(definition: ComponentDefinition): (
     const renderer = plugin.consume("renderer");
 
     context.addInitializer(function (): void {
-      customElements.define(definition.name, this as CustomElementConstructor);
+      customElements.define(name, this as CustomElementConstructor);
     });
 
     return class extends HTMLElement {
-      readonly #props: T;
+      readonly #props: object;
 
       static observedAttributes = attributes;
 
@@ -99,8 +99,4 @@ export function component<T extends object>(definition: ComponentDefinition): (
       }
     };
   };
-}
-
-export interface ComponentDefinition {
-  name: string;
 }
