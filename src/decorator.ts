@@ -1,5 +1,4 @@
 import { observe, subscribe } from "./default.ts";
-import type { Renderer } from "./renderer.ts";
 import { getPlugin } from "./plugin.ts";
 
 export function reactive(
@@ -11,6 +10,9 @@ export function reactive(
   });
 }
 
+/**
+ * @throws {Error}
+ */
 export function attr(
   _: unknown,
   context: ClassFieldDecoratorContext<object>,
@@ -32,9 +34,7 @@ export function attr(
   );
 }
 
-export function component<T extends object>(
-  definition: ComponentDefinition<T>,
-): (
+export function component<T extends object>(definition: ComponentDefinition): (
   value: new (...args: unknown[]) => T,
   context: ClassDecoratorContext,
 ) => void {
@@ -48,12 +48,13 @@ export function component<T extends object>(
     const attributesChangedCallbacks = plugin.consume(
       "attributeChangedCallback",
     );
+    const renderer = plugin.consume("renderer");
 
     context.addInitializer(function (): void {
       customElements.define(definition.name, this as CustomElementConstructor);
     });
 
-    class WhiteBox extends HTMLElement {
+    return class extends HTMLElement {
       readonly #props: T;
 
       static observedAttributes = attributes;
@@ -71,7 +72,7 @@ export function component<T extends object>(
         }
 
         const update = () => {
-          definition.renderer?.render(this.#props, this);
+          renderer?.render(this.#props, this);
         };
 
         const unsubscribe = subscribe(this.#props, update);
@@ -84,7 +85,7 @@ export function component<T extends object>(
         unsubscribe?.();
         subscriptions.delete(this);
 
-        definition.renderer?.dispose(this);
+        renderer?.dispose(this);
       }
 
       attributeChangedCallback(
@@ -96,13 +97,10 @@ export function component<T extends object>(
           callback.call(this.#props, name, oldValue, newValue);
         }
       }
-    }
-
-    return WhiteBox;
+    };
   };
 }
 
-export interface ComponentDefinition<P> {
+export interface ComponentDefinition {
   name: string;
-  renderer?: Renderer<P>;
 }

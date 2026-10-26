@@ -1,3 +1,5 @@
+import type { Renderer } from "./renderer.ts";
+
 export interface AttributeChangedCallback {
   (
     this: object,
@@ -13,14 +15,17 @@ export interface Plugin {
     name: "attributeChangedCallback",
     value: AttributeChangedCallback,
   ): void;
+  provide(name: "renderer", value: Renderer<unknown>): void;
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
+  consume(name: "renderer"): Renderer<unknown> | null;
 }
 
 export interface PluginRegistry {
   observedAttributes: string[][];
   attributeChangedCallback: AttributeChangedCallback[];
+  renderer: Renderer<unknown> | null;
 }
 
 class PluginImpl implements Plugin {
@@ -38,15 +43,28 @@ class PluginImpl implements Plugin {
     value: AttributeChangedCallback,
   ): void;
   provide(
+    name: "renderer",
+    value: Renderer<unknown>,
+  ): void;
+  provide(
     name: keyof PluginRegistry,
-    value: string[] | AttributeChangedCallback,
+    value: string[] | AttributeChangedCallback | Renderer<unknown> | null,
   ): void {
-    if (name === "observedAttributes") {
-      this.#registry.observedAttributes.push(value as string[]);
-    } else {
-      this.#registry.attributeChangedCallback.push(
-        value as AttributeChangedCallback,
-      );
+    switch (name) {
+      case "observedAttributes": {
+        this.#registry.observedAttributes.push(value as string[]);
+        break;
+      }
+      case "attributeChangedCallback": {
+        this.#registry.attributeChangedCallback.push(
+          value as AttributeChangedCallback,
+        );
+        break;
+      }
+      case "renderer": {
+        this.#registry.renderer = value as Renderer<unknown>;
+        break;
+      }
     }
   }
 
@@ -55,8 +73,11 @@ class PluginImpl implements Plugin {
     name: "attributeChangedCallback",
   ): AttributeChangedCallback[];
   consume(
+    name: "renderer",
+  ): Renderer<unknown> | null;
+  consume(
     name: keyof PluginRegistry,
-  ): string[][] | AttributeChangedCallback[] {
+  ): string[][] | AttributeChangedCallback[] | Renderer<unknown> | null {
     return this.#registry[name];
   }
 }
@@ -73,6 +94,7 @@ export function getPlugin(metadata: DecoratorMetadataObject): Plugin {
   const plugin = new PluginImpl({
     observedAttributes: [],
     attributeChangedCallback: [],
+    renderer: null,
   });
 
   metadata[PLUGIN] = plugin;
