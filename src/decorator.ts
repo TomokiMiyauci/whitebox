@@ -1,5 +1,5 @@
 import { observe, subscribe } from "./default.ts";
-import { render, type VNode } from "preact";
+import type { Renderer } from "./renderer.ts";
 
 export function reactive(
   _: unknown,
@@ -29,7 +29,7 @@ export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
 
 export interface ComponentDefinition<P> {
   name: string;
-  template?: (props: P) => VNode<any>;
+  renderer?: Renderer<P>;
 }
 
 export function component<T extends object>(
@@ -65,10 +65,7 @@ export function component<T extends object>(
         }
 
         const update = () => {
-          render(
-            definition?.template?.(this.#props),
-            this as HTMLElement,
-          );
+          definition.renderer?.render(this.#props, this);
         };
 
         const unsubscribe = subscribe(this.#props, update);
@@ -80,6 +77,8 @@ export function component<T extends object>(
         const unsubscribe = subscriptions.get(this);
         unsubscribe?.();
         subscriptions.delete(this);
+
+        definition.renderer?.dispose(this);
       }
 
       attributeChangedCallback(
