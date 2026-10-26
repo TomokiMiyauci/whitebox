@@ -1,5 +1,6 @@
 import { observe, subscribe } from "./default.ts";
 import type { Renderer } from "./renderer.ts";
+import { getPlugin } from "./plugin.ts";
 
 export function reactive(
   _: unknown,
@@ -10,26 +11,25 @@ export function reactive(
   });
 }
 
-const ATTR = Symbol("attribute");
-
-export function attr(_: unknown, context: ClassFieldDecoratorContext): void {
+export function attr(
+  _: unknown,
+  context: ClassFieldDecoratorContext<object>,
+): void {
   const { name, metadata } = context;
 
-  if (ATTR in metadata) {
-    const registry = metadata[ATTR];
+  if (typeof name !== "string") throw new Error();
 
-    if (registry instanceof Set) {
-      registry.add(name);
-    }
-  } else {
-    const registry = new Set([name]);
-    metadata[ATTR] = registry;
-  }
-}
+  const plugin = getPlugin(metadata);
 
-export interface ComponentDefinition<P> {
-  name: string;
-  renderer?: Renderer<P>;
+  plugin.provide("observedAttributes", [name]);
+  plugin.provide(
+    "attributeChangedCallback",
+    function (_, oldValue, newValue): void {
+      if (!Object.is(oldValue, newValue)) {
+        Reflect.set(this, name, newValue);
+      }
+    },
+  );
 }
 
 export function component<T extends object>(
@@ -40,8 +40,14 @@ export function component<T extends object>(
 ) => void {
   return (value, context) => {
     const subscriptions = new WeakMap<object, VoidFunction>();
-    const registry = context.metadata[ATTR];
-    const attributes = registry instanceof Set ? registry : null;
+
+    const plugin = getPlugin(context.metadata);
+
+    const attributeList = plugin.consume("observedAttributes");
+    const attributes = [...new Set(attributeList.flat())];
+    const attributesChangedCallbacks = plugin.consume(
+      "attributeChangedCallback",
+    );
 
     context.addInitializer(function (): void {
       customElements.define(definition.name, this as CustomElementConstructor);
@@ -50,7 +56,7 @@ export function component<T extends object>(
     class WhiteBox extends HTMLElement {
       readonly #props: T;
 
-      static observedAttributes = [...attributes ?? []];
+      static observedAttributes = attributes;
 
       constructor(...args: unknown[]) {
         super();
@@ -86,14 +92,17 @@ export function component<T extends object>(
         oldValue: string | null,
         newValue: string | null,
       ): void {
-        if (oldValue === newValue || !attributes?.has(name)) {
-          return;
+        for (const callback of attributesChangedCallbacks) {
+          callback.call(this.#props, name, oldValue, newValue);
         }
-
-        Reflect.set(this.#props, name, newValue);
       }
     }
 
     return WhiteBox;
   };
+}
+
+export interface ComponentDefinition<P> {
+  name: string;
+  renderer?: Renderer<P>;
 }
