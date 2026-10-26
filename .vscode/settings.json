@@ -1,7 +1,5 @@
 {
-  "deno.enable": true,
-  "deno.lint": true,
-  "editor.defaultFormatter": "denoland.vscode-deno",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[typescript]": {
     "editor.tabSize": 2
   },
@@ -9,7 +7,6 @@
     "editor.tabSize": 2
   },
   "[json]": {
-    "editor.defaultFormatter": "denoland.vscode-deno",
     "editor.tabSize": 2
   },
   "[yaml]": {
@@ -17,11 +14,5 @@
     "editor.detectIndentation": false,
     "editor.tabSize": 2
   },
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit"
-  },
-  "deno.codeLens.references": true,
-  "deno.codeLens.implementations": true,
-  "deno.codeLens.referencesAllFunctions": true
+  "editor.formatOnSave": true
 }

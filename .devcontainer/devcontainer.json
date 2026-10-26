@@ -1,9 +1,13 @@
 {
-  "name": "Deno",
-  "image": "denoland/deno",
+  "name": "Bun",
+  "image": "oven/bun",
   "customizations": {
     "vscode": {
-      "extensions": ["denoland.vscode-deno"]
+      "extensions": [
+        "oven.bun-vscode",
+        "ritwickdey.liveserver",
+        "esbenp.prettier-vscode"
+      ]
     }
   },
   "features": {
