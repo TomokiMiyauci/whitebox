@@ -37,22 +37,13 @@ class PluginImpl implements Plugin {
     this.#registry = registry;
   }
 
-  provide(
-    name: "observedAttributes",
-    value: string[],
-  ): void;
+  provide(name: "observedAttributes", value: string[]): void;
   provide(
     name: "attributeChangedCallback",
     value: AttributeChangedCallback,
   ): void;
-  provide(
-    name: "renderer",
-    value: Renderer<unknown>,
-  ): void;
-  provide(
-    name: "subscription",
-    value: Function,
-  ): void;
+  provide(name: "renderer", value: Renderer<unknown>): void;
+  provide(name: "subscription", value: Function): void;
   provide(
     name: keyof PluginRegistry,
     value:
@@ -85,12 +76,8 @@ class PluginImpl implements Plugin {
   }
 
   consume(name: "observedAttributes"): string[][];
-  consume(
-    name: "attributeChangedCallback",
-  ): AttributeChangedCallback[];
-  consume(
-    name: "renderer",
-  ): Renderer<unknown> | null;
+  consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
+  consume(name: "renderer"): Renderer<unknown> | null;
   consume(name: "subscription"): Function[];
   consume(
     name: keyof PluginRegistry,
