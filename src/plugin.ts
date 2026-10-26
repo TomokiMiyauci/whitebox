@@ -16,16 +16,19 @@ export interface Plugin {
     value: AttributeChangedCallback,
   ): void;
   provide(name: "renderer", value: Renderer<unknown>): void;
+  provide(name: "subscription", value: Function): void;
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
   consume(name: "renderer"): Renderer<unknown> | null;
+  consume(name: "subscription"): Function[];
 }
 
 export interface PluginRegistry {
   observedAttributes: string[][];
   attributeChangedCallback: AttributeChangedCallback[];
   renderer: Renderer<unknown> | null;
+  subscription: Function[];
 }
 
 class PluginImpl implements Plugin {
@@ -47,8 +50,17 @@ class PluginImpl implements Plugin {
     value: Renderer<unknown>,
   ): void;
   provide(
+    name: "subscription",
+    value: Function,
+  ): void;
+  provide(
     name: keyof PluginRegistry,
-    value: string[] | AttributeChangedCallback | Renderer<unknown> | null,
+    value:
+      | string[]
+      | AttributeChangedCallback
+      | Renderer<unknown>
+      | Function
+      | null,
   ): void {
     switch (name) {
       case "observedAttributes": {
@@ -65,6 +77,10 @@ class PluginImpl implements Plugin {
         this.#registry.renderer = value as Renderer<unknown>;
         break;
       }
+      case "subscription": {
+        this.#registry.subscription.push(value as Function);
+        break;
+      }
     }
   }
 
@@ -75,9 +91,15 @@ class PluginImpl implements Plugin {
   consume(
     name: "renderer",
   ): Renderer<unknown> | null;
+  consume(name: "subscription"): Function[];
   consume(
     name: keyof PluginRegistry,
-  ): string[][] | AttributeChangedCallback[] | Renderer<unknown> | null {
+  ):
+    | string[][]
+    | AttributeChangedCallback[]
+    | Renderer<unknown>
+    | Function[]
+    | null {
     return this.#registry[name];
   }
 }
@@ -95,6 +117,7 @@ export function getPlugin(metadata: DecoratorMetadataObject): Plugin {
     observedAttributes: [],
     attributeChangedCallback: [],
     renderer: null,
+    subscription: [],
   });
 
   metadata[PLUGIN] = plugin;

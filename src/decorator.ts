@@ -10,6 +10,15 @@ export function reactive(
   });
 }
 
+export function effect(
+  value: Function,
+  context: ClassMethodDecoratorContext,
+): void {
+  const plugin = getPlugin(context.metadata);
+
+  plugin.provide("subscription", value);
+}
+
 /**
  * @throws {Error}
  */
@@ -39,7 +48,7 @@ export function component(name: string): (
   context: ClassDecoratorContext,
 ) => void {
   return (value, context) => {
-    const subscriptions = new WeakMap<object, VoidFunction>();
+    const subscriptionRegistry = new WeakMap<object, VoidFunction>();
 
     const plugin = getPlugin(context.metadata);
 
@@ -49,6 +58,7 @@ export function component(name: string): (
       "attributeChangedCallback",
     );
     const renderer = plugin.consume("renderer");
+    const subscriptions = plugin.consume("subscription");
 
     context.addInitializer(function (): void {
       customElements.define(name, this as CustomElementConstructor);
@@ -67,23 +77,27 @@ export function component(name: string): (
 
       connectedCallback(): void {
         // Prevent duplicate subscription
-        if (subscriptions.has(this)) {
+        if (subscriptionRegistry.has(this)) {
           return;
         }
 
-        const update = () => {
+        const actions = () => {
           renderer?.render(this.#props, this);
+
+          for (const subscription of subscriptions) {
+            subscription.call(this.#props);
+          }
         };
 
-        const unsubscribe = subscribe(this.#props, update);
-        subscriptions.set(this, unsubscribe);
-        update();
+        const unsubscribe = subscribe(this.#props, actions);
+        subscriptionRegistry.set(this, unsubscribe);
+        renderer?.render(this.#props, this);
       }
 
       disconnectedCallback(): void {
-        const unsubscribe = subscriptions.get(this);
+        const unsubscribe = subscriptionRegistry.get(this);
         unsubscribe?.();
-        subscriptions.delete(this);
+        subscriptionRegistry.delete(this);
 
         renderer?.dispose(this);
       }
