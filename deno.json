@@ -1,6 +1,8 @@
 {
   "name": "whitebox",
-  "exports": "./src/mod.ts",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
   "imports": {
     "preact": "npm:preact@^11.0.1"
   },
@@ -21,7 +23,33 @@
   "lint": {
     "rules": {
       "include": [
-        "explicit-function-return-type"
+        "explicit-function-return-type",
+        "camelcase",
+        "default-param-last",
+        "eqeqeq",
+        "explicit-module-boundary-types",
+        "guard-for-in",
+        "no-await-in-loop",
+        "no-boolean-literal-for-arguments",
+        "no-console",
+        "no-eval",
+        "no-external-import",
+        "no-implicit-declare-namespace-export",
+        "no-inferrable-types",
+        "no-node-globals",
+        "no-non-null-asserted-optional-chain",
+        "no-non-null-assertion",
+        "no-process-global",
+        "no-self-compare",
+        "no-sparse-arrays",
+        "no-sync-fn-in-async-fn",
+        "no-throw-literal",
+        "no-top-level-await",
+        "no-undef",
+        "no-useless-rename",
+        "prefer-ascii",
+        "single-var-declarator",
+        "triple-slash-reference"
       ]
     }
   }
