@@ -25,7 +25,7 @@ export function template<T>(
   context: ClassDecoratorContext<abstract new (...args: unknown[]) => T>,
 ) => void {
   return (_: unknown, context: ClassDecoratorContext) => {
-    const plugin = getPlugin(context.metadata);
+    const plugin = getPlugin(context.metadata ?? {});
 
     plugin.provide("renderer", new PreactRenderer(fn));
   };

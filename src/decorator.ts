@@ -14,7 +14,7 @@ export function effect(
   value: Function,
   context: ClassMethodDecoratorContext,
 ): void {
-  const plugin = getPlugin(context.metadata);
+  const plugin = getPlugin(context.metadata ?? {});
 
   plugin.provide("subscription", value);
 }
@@ -30,7 +30,7 @@ export function attr(
 
   if (typeof name !== "string") throw new Error();
 
-  const plugin = getPlugin(metadata);
+  const plugin = getPlugin(metadata ?? {});
 
   plugin.provide("observedAttributes", [name]);
   plugin.provide(
@@ -50,7 +50,7 @@ export function component(name: string): (
   return (value, context) => {
     const subscriptionRegistry = new WeakMap<object, VoidFunction>();
 
-    const plugin = getPlugin(context.metadata);
+    const plugin = getPlugin(context.metadata ?? {});
 
     const attributeList = plugin.consume("observedAttributes");
     const attributes = [...new Set(attributeList.flat())];
