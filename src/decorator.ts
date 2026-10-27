@@ -102,8 +102,6 @@ export function component(
   context: ClassDecoratorContext,
 ) => void {
   return (value, context) => {
-    const subscriptionRegistry = new WeakMap<object, VoidFunction>();
-
     const plugin = getPlugin(context.metadata ?? {});
 
     const attributeList = plugin.consume("observedAttributes");
@@ -120,6 +118,7 @@ export function component(
 
     return class extends HTMLElement {
       readonly #props: object;
+      #unsubscribe?: VoidFunction;
 
       static observedAttributes = attributes;
 
@@ -130,11 +129,6 @@ export function component(
       }
 
       connectedCallback(): void {
-        // Prevent duplicate subscription
-        if (subscriptionRegistry.has(this)) {
-          return;
-        }
-
         const actions = () => {
           renderer?.render(this.#props, this);
 
@@ -143,15 +137,12 @@ export function component(
           }
         };
 
-        const unsubscribe = subscribe(this.#props, actions);
-        subscriptionRegistry.set(this, unsubscribe);
+        this.#unsubscribe = subscribe(this.#props, actions);
         renderer?.render(this.#props, this);
       }
 
       disconnectedCallback(): void {
-        const unsubscribe = subscriptionRegistry.get(this);
-        unsubscribe?.();
-        subscriptionRegistry.delete(this);
+        this.#unsubscribe?.();
 
         renderer?.dispose(this);
       }
