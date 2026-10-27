@@ -89,6 +89,12 @@ export function attr(
   );
 }
 
+interface ClassDecorator<
+  Class extends abstract new (...args: unknown[]) => unknown,
+> {
+  (value: Class, context: ClassDecoratorContext<Class>): void;
+}
+
 /**
  * Define a class as a custom element.
  *
@@ -97,10 +103,7 @@ export function attr(
  */
 export function component(
   name: string,
-): (
-  value: new (...args: unknown[]) => object,
-  context: ClassDecoratorContext,
-) => void {
+): ClassDecorator<new (...args: unknown[]) => object> {
   return (value, context) => {
     const plugin = getPlugin(context.metadata ?? {});
 
