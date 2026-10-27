@@ -1,4 +1,4 @@
-import { observe, subscribe } from "./default.ts";
+import { observe, subscribe } from "./global.ts";
 import { getPlugin } from "./plugin.ts";
 
 /**
