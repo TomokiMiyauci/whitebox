@@ -11,10 +11,16 @@ export class Reactive {
 
   private subscribers: Registry;
   subscribe(target: object, subscriber: Subscriber): VoidFunction {
-    const listeners = this.subscribers.getOrInsertComputed(
-      target,
-      () => new Set(),
-    );
+    let listeners: Set<Subscriber>;
+
+    const set = this.subscribers.get(target);
+
+    if (!set) {
+      listeners = new Set();
+      this.subscribers.set(target, listeners);
+    } else {
+      listeners = set;
+    }
 
     listeners.add(subscriber);
 
