@@ -1,9 +1,8 @@
-import { Reactive, type Subscriber, Observer } from "./reactive.ts";
+import { WeakMapPubSub, Observer } from "./reactive.ts";
 
-const subscribers = new WeakMap<object, Set<Subscriber>>();
-const reactive = new Reactive(subscribers);
-const subscribe = reactive.subscribe.bind(reactive);
-const observer = new Observer(reactive);
+const pubsub = new WeakMapPubSub();
+const subscribe = pubsub.subscribe.bind(pubsub);
+const observer = new Observer(pubsub);
 const observe = observer.observe.bind(observer);
 
 export { observe, subscribe };

@@ -2,22 +2,17 @@ export interface Subscriber {
   (): void;
 }
 
-export interface Registry extends WeakMap<WeakKey, Set<Subscriber>> {}
+export class WeakMapPubSub implements PubSub<object, void> {
+  #store: WeakMap<WeakKey, Set<Subscriber>> = new WeakMap();
 
-export class Reactive implements PubSub<object, void> {
-  constructor(subscribers: Registry) {
-    this.subscribers = subscribers;
-  }
-
-  private subscribers: Registry;
   subscribe(target: object, subscriber: Subscriber): VoidFunction {
     let listeners: Set<Subscriber>;
 
-    const set = this.subscribers.get(target);
+    const set = this.#store.get(target);
 
     if (!set) {
       listeners = new Set();
-      this.subscribers.set(target, listeners);
+      this.#store.set(target, listeners);
     } else {
       listeners = set;
     }
@@ -28,13 +23,13 @@ export class Reactive implements PubSub<object, void> {
       listeners.delete(subscriber);
 
       if (listeners.size === 0) {
-        this.subscribers.delete(target);
+        this.#store.delete(target);
       }
     };
   }
 
   publish(target: object): void {
-    const listeners = this.subscribers.get(target);
+    const listeners = this.#store.get(target);
 
     if (!listeners) return;
 
@@ -51,9 +46,9 @@ interface PubSub<Topic, Message> {
 }
 
 export class Observer {
-  #pubsub: Reactive;
+  #pubsub: WeakMapPubSub;
 
-  constructor(pubsub: Reactive) {
+  constructor(pubsub: WeakMapPubSub) {
     this.#pubsub = pubsub;
   }
 
