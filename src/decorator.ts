@@ -1,4 +1,4 @@
-import { observe, subscribe } from "./global.ts";
+import { observe, subscribe, scheduler } from "./global.ts";
 import { getPlugin } from "./plugin.ts";
 
 /**
@@ -140,7 +140,9 @@ export function component(
           }
         };
 
-        this.#unsubscribe = subscribe(this.#props, actions);
+        const addSchedule = () => scheduler.schedule(actions);
+
+        this.#unsubscribe = subscribe(this.#props, addSchedule);
         renderer?.render(this.#props, this);
       }
 
