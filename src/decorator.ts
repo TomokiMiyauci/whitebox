@@ -1,6 +1,6 @@
 import { observe, engine } from "./global.ts";
 import { getPlugin } from "./plugin.ts";
-import type { Effect } from "./reactive.ts";
+import { Effect } from "./reactive.ts";
 
 /**
  * Marks a class field as reactive.
@@ -47,12 +47,12 @@ export function reactive(
  * ```
  */
 export function effect(
-  value: Function,
+  value: VoidFunction,
   context: ClassMethodDecoratorContext,
 ): void {
   const plugin = getPlugin(context.metadata ?? {});
 
-  plugin.provide("subscription", value);
+  plugin.provide("effect", ({ props }) => new Effect(value.bind(props)));
 }
 
 /**
