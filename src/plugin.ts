@@ -1,5 +1,4 @@
 import type { Effect } from "./reactive.ts";
-import type { Renderer } from "./renderer.ts";
 
 export interface AttributeChangedCallback {
   (
@@ -16,8 +15,6 @@ export interface Plugin {
     name: "attributeChangedCallback",
     value: AttributeChangedCallback,
   ): void;
-  provide(name: "renderer", value: Renderer<unknown>): void;
-  provide(name: "subscription", value: Function): void;
   provide(
     name: "effect",
     value: (factory: { props: object; container: HTMLElement }) => Effect,
@@ -25,16 +22,12 @@ export interface Plugin {
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
-  consume(name: "renderer"): Renderer<unknown> | null;
-  consume(name: "subscription"): Function[];
   consume(name: "effect"): EffectFactory[];
 }
 
 export interface PluginRegistry {
   observedAttributes: string[][];
   attributeChangedCallback: AttributeChangedCallback[];
-  renderer: Renderer<unknown> | null;
-  subscription: Function[];
   effect: EffectFactory[];
 }
 
@@ -58,18 +51,10 @@ class PluginImpl implements Plugin {
     name: "attributeChangedCallback",
     value: AttributeChangedCallback,
   ): void;
-  provide(name: "renderer", value: Renderer<unknown>): void;
-  provide(name: "subscription", value: Function): void;
   provide(name: "effect", value: EffectFactory): void;
   provide(
     name: keyof PluginRegistry,
-    value:
-      | string[]
-      | AttributeChangedCallback
-      | Renderer<unknown>
-      | Function
-      | EffectFactory
-      | null,
+    value: string[] | AttributeChangedCallback | EffectFactory | null,
   ): void {
     switch (name) {
       case "observedAttributes": {
@@ -82,14 +67,6 @@ class PluginImpl implements Plugin {
         );
         break;
       }
-      case "renderer": {
-        this.#registry.renderer = value as Renderer<unknown>;
-        break;
-      }
-      case "subscription": {
-        this.#registry.subscription.push(value as Function);
-        break;
-      }
       case "effect": {
         this.#registry.effect.push(value as EffectFactory);
       }
@@ -98,18 +75,10 @@ class PluginImpl implements Plugin {
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
-  consume(name: "renderer"): Renderer<unknown> | null;
-  consume(name: "subscription"): Function[];
   consume(name: "effect"): EffectFactory[];
   consume(
     name: keyof PluginRegistry,
-  ):
-    | string[][]
-    | AttributeChangedCallback[]
-    | Renderer<unknown>
-    | Function[]
-    | EffectFactory[]
-    | null {
+  ): string[][] | AttributeChangedCallback[] | EffectFactory[] | null {
     return this.#registry[name];
   }
 }
@@ -126,8 +95,6 @@ export function getPlugin(metadata: DecoratorMetadataObject): Plugin {
   const plugin = new PluginImpl({
     observedAttributes: [],
     attributeChangedCallback: [],
-    renderer: null,
-    subscription: [],
     effect: [],
   });
 

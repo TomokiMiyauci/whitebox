@@ -128,10 +128,11 @@ export function component(
       constructor(...args: unknown[]) {
         super();
 
-        this.#props = new value(...args);
+        const props = new value(...args);
+        this.#props = props;
 
         const effects = effectFactories.map((factory) =>
-          factory({ props: this.#props, container: this }),
+          factory({ props, container: this }),
         );
 
         this.#effects = effects;
