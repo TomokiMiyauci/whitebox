@@ -1,4 +1,4 @@
-import { Engine, State } from "./reactive.ts";
+import { State } from "./reactive.ts";
 
 export interface Subscriber {
   (): void;
@@ -48,15 +48,8 @@ interface PubSub<Topic, Message> {
 }
 
 export class Observer {
-  #engine: Engine;
-
-  constructor(engine: Engine) {
-    this.#engine = engine;
-  }
-
   observe(target: object, property: PropertyKey): void {
     const state = new State(Reflect.get(target, property));
-    const engine = this.#engine;
 
     Object.defineProperty(target, property, {
       configurable: true,
@@ -67,7 +60,7 @@ export class Observer {
       },
 
       set(next: unknown): void {
-        engine.mutate(state, next);
+        state.set(next);
       },
     });
   }

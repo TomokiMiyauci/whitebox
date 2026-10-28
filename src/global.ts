@@ -4,7 +4,8 @@ import { MicrotaskScheduler } from "./scheduler.ts";
 
 const scheduler = new MicrotaskScheduler();
 const engine = new Engine(scheduler);
-const observer = new Observer(engine);
+engine.start();
+const observer = new Observer();
 const observe = observer.observe.bind(observer);
 
 export { observe, scheduler, engine };

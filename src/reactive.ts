@@ -9,9 +9,9 @@ interface Equality<T> {
 class ReactiveContext extends EventTarget {}
 
 interface ReactiveContext extends EventTarget {
-  addEventListener(
-    type: "get",
-    listener: (ev: CustomEvent<AnyState>) => any,
+  addEventListener<K extends keyof CustomEventMap>(
+    type: K,
+    listener: (ev: CustomEventMap[K]) => any,
     options?: boolean | AddEventListenerOptions,
   ): void;
   addEventListener(
@@ -19,9 +19,9 @@ interface ReactiveContext extends EventTarget {
     listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ): void;
-  removeEventListener(
-    type: "get",
-    listener: (ev: CustomEvent<AnyState>) => any,
+  removeEventListener<K extends keyof CustomEventMap>(
+    type: K,
+    listener: (ev: CustomEventMap[K]) => any,
     options?: boolean | AddEventListenerOptions,
   ): void;
   removeEventListener(
@@ -29,6 +29,11 @@ interface ReactiveContext extends EventTarget {
     listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ): void;
+}
+
+interface CustomEventMap {
+  get: CustomEvent<AnyState>;
+  set: CustomEvent<AnyState>;
 }
 
 const context = new ReactiveContext();
@@ -52,6 +57,8 @@ export class State<T> implements Equality<T> {
     }
 
     this.#current = value;
+
+    context.dispatchEvent(new CustomEvent("set", { detail: this }));
 
     return true;
   }
@@ -111,15 +118,20 @@ export class Engine {
     this.effects.delete(effect);
   }
 
-  mutate<T>(state: State<T>, value: T): void {
-    if (!state.set(value)) {
-      return;
-    }
-
-    for (const effect of this.effects) {
-      if (effect.dependsOn(state)) {
-        this.#scheduler.schedule(effect.scheduledRun);
+  start(): VoidFunction {
+    const handler = (ev: CustomEventMap["set"]): void => {
+      const state = ev.detail;
+      for (const effect of this.effects) {
+        if (effect.dependsOn(state)) {
+          this.#scheduler.schedule(effect.scheduledRun);
+        }
       }
-    }
+    };
+
+    context.addEventListener("set", handler);
+
+    return () => {
+      context.removeEventListener("set", handler);
+    };
   }
 }
