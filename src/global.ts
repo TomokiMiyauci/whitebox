@@ -1,4 +1,4 @@
-import { WeakMapPubSub, Observer } from "./reactive.ts";
+import { WeakMapPubSub, Observer } from "./pubsub.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
 
 const pubsub = new WeakMapPubSub();
