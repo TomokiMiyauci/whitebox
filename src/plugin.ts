@@ -1,44 +1,39 @@
 import type { Effect } from "./reactive.ts";
 
 export interface AttributeChangedCallback {
-  (
-    this: object,
-    name: string,
-    oldValue: string | null,
-    newValue: string | null,
-  ): void;
+  (name: string, oldValue: string | null, newValue: string | null): void;
+}
+
+interface FactoryContext {
+  props: object;
+  container: HTMLElement;
+}
+
+interface Factory<T> {
+  (context: FactoryContext): T;
 }
 
 export interface Plugin {
   provide(name: "observedAttributes", value: string[]): void;
   provide(
     name: "attributeChangedCallback",
-    value: AttributeChangedCallback,
+    value: AttributeChangedCallbackFactory,
   ): void;
-  provide(
-    name: "effect",
-    value: (factory: { props: object; container: HTMLElement }) => Effect,
-  ): void;
+  provide(name: "effect", value: EffectFactory): void;
 
   consume(name: "observedAttributes"): string[][];
-  consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
+  consume(name: "attributeChangedCallback"): AttributeChangedCallbackFactory[];
   consume(name: "effect"): EffectFactory[];
 }
 
 export interface PluginRegistry {
   observedAttributes: string[][];
-  attributeChangedCallback: AttributeChangedCallback[];
+  attributeChangedCallback: AttributeChangedCallbackFactory[];
   effect: EffectFactory[];
 }
 
-interface EffectFactory {
-  (context: EffectContext): Effect;
-}
-
-interface EffectContext {
-  props: object;
-  container: HTMLElement;
-}
+interface EffectFactory extends Factory<Effect> {}
+interface AttributeChangedCallbackFactory extends Factory<AttributeChangedCallback> {}
 
 class PluginImpl implements Plugin {
   #registry: PluginRegistry;
@@ -49,12 +44,12 @@ class PluginImpl implements Plugin {
   provide(name: "observedAttributes", value: string[]): void;
   provide(
     name: "attributeChangedCallback",
-    value: AttributeChangedCallback,
+    value: AttributeChangedCallbackFactory,
   ): void;
   provide(name: "effect", value: EffectFactory): void;
   provide(
     name: keyof PluginRegistry,
-    value: string[] | AttributeChangedCallback | EffectFactory | null,
+    value: string[] | AttributeChangedCallbackFactory | EffectFactory | null,
   ): void {
     switch (name) {
       case "observedAttributes": {
@@ -63,7 +58,7 @@ class PluginImpl implements Plugin {
       }
       case "attributeChangedCallback": {
         this.#registry.attributeChangedCallback.push(
-          value as AttributeChangedCallback,
+          value as AttributeChangedCallbackFactory,
         );
         break;
       }
@@ -74,11 +69,11 @@ class PluginImpl implements Plugin {
   }
 
   consume(name: "observedAttributes"): string[][];
-  consume(name: "attributeChangedCallback"): AttributeChangedCallback[];
+  consume(name: "attributeChangedCallback"): AttributeChangedCallbackFactory[];
   consume(name: "effect"): EffectFactory[];
   consume(
     name: keyof PluginRegistry,
-  ): string[][] | AttributeChangedCallback[] | EffectFactory[] | null {
+  ): string[][] | AttributeChangedCallbackFactory[] | EffectFactory[] | null {
     return this.#registry[name];
   }
 }

@@ -1,5 +1,5 @@
 import { observe, engine } from "./global.ts";
-import { getPlugin } from "./plugin.ts";
+import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
 import { Effect } from "./reactive.ts";
 
 /**
@@ -82,11 +82,10 @@ export function attr(
   plugin.provide("observedAttributes", [name]);
   plugin.provide(
     "attributeChangedCallback",
-    function (_, oldValue, newValue): void {
-      if (!Object.is(oldValue, newValue)) {
-        Reflect.set(this, name, newValue);
-      }
-    },
+    ({ props }) =>
+      (_, __, newValue) => {
+        Reflect.set(props, name, newValue);
+      },
   );
 }
 
@@ -110,7 +109,7 @@ export function component(
 
     const attributeList = plugin.consume("observedAttributes");
     const attributes = [...new Set(attributeList.flat())];
-    const attributesChangedCallbacks = plugin.consume(
+    const attributesChangedCallbackFactories = plugin.consume(
       "attributeChangedCallback",
     );
     const effectFactories = plugin.consume("effect");
@@ -122,6 +121,7 @@ export function component(
     return class extends HTMLElement {
       readonly #props: object;
       readonly #effects: Effect[];
+      readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
       static observedAttributes = attributes;
 
@@ -131,11 +131,14 @@ export function component(
         const props = new value(...args);
         this.#props = props;
 
-        const effects = effectFactories.map((factory) =>
-          factory({ props, container: this }),
-        );
-
+        const context = { props, container: this };
+        const effects = effectFactories.map((factory) => factory(context));
         this.#effects = effects;
+
+        const attributesChangedCallbacks =
+          attributesChangedCallbackFactories.map((factory) => factory(context));
+
+        this.#attributesChangedCallbacks = attributesChangedCallbacks;
       }
 
       connectedCallback(): void {
@@ -156,7 +159,7 @@ export function component(
         oldValue: string | null,
         newValue: string | null,
       ): void {
-        for (const callback of attributesChangedCallbacks) {
+        for (const callback of this.#attributesChangedCallbacks) {
           callback.call(this.#props, name, oldValue, newValue);
         }
       }
