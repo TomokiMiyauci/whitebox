@@ -1,5 +1,6 @@
-import { observe, subscribe, scheduler } from "./global.ts";
+import { observe, engine } from "./global.ts";
 import { getPlugin } from "./plugin.ts";
+import type { Effect } from "./reactive.ts";
 
 /**
  * Marks a class field as reactive.
@@ -112,8 +113,7 @@ export function component(
     const attributesChangedCallbacks = plugin.consume(
       "attributeChangedCallback",
     );
-    const renderer = plugin.consume("renderer");
-    const subscriptions = plugin.consume("subscription");
+    const effectFactories = plugin.consume("effect");
 
     context.addInitializer(function (): void {
       customElements.define(name, this as CustomElementConstructor);
@@ -121,7 +121,7 @@ export function component(
 
     return class extends HTMLElement {
       readonly #props: object;
-      #unsubscribe?: VoidFunction;
+      readonly #effects: Effect[];
 
       static observedAttributes = attributes;
 
@@ -129,27 +129,25 @@ export function component(
         super();
 
         this.#props = new value(...args);
+
+        const effects = effectFactories.map((factory) =>
+          factory({ props: this.#props, container: this }),
+        );
+
+        this.#effects = effects;
       }
 
       connectedCallback(): void {
-        const actions = () => {
-          renderer?.render(this.#props, this);
-
-          for (const subscription of subscriptions) {
-            subscription.call(this.#props);
-          }
-        };
-
-        const addSchedule = () => scheduler.schedule(actions);
-
-        this.#unsubscribe = subscribe(this.#props, addSchedule);
-        renderer?.render(this.#props, this);
+        for (const effect of this.#effects) {
+          engine.register(effect);
+          effect.run();
+        }
       }
 
       disconnectedCallback(): void {
-        this.#unsubscribe?.();
-
-        renderer?.dispose(this);
+        for (const effect of this.#effects) {
+          engine.unregister(effect);
+        }
       }
 
       attributeChangedCallback(

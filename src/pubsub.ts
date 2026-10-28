@@ -1,3 +1,5 @@
+import { Engine, State } from "./reactive.ts";
+
 export interface Subscriber {
   (): void;
 }
@@ -46,29 +48,26 @@ interface PubSub<Topic, Message> {
 }
 
 export class Observer {
-  #pubsub: WeakMapPubSub;
+  #engine: Engine;
 
-  constructor(pubsub: WeakMapPubSub) {
-    this.#pubsub = pubsub;
+  constructor(engine: Engine) {
+    this.#engine = engine;
   }
 
   observe(target: object, property: PropertyKey): void {
-    let value = Reflect.get(target, property);
-    const pubsub = this.#pubsub;
+    const state = new State(Reflect.get(target, property));
+    const engine = this.#engine;
 
     Object.defineProperty(target, property, {
       configurable: true,
       enumerable: true,
 
       get(): unknown {
-        return value;
+        return state.value;
       },
 
       set(next: unknown): void {
-        if (Object.is(value, next)) return;
-
-        value = next;
-        pubsub.publish(this);
+        engine.mutate(state, next);
       },
     });
   }
