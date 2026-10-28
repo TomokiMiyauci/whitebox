@@ -89,80 +89,102 @@ export function attr(
   );
 }
 
+/**
+ * Define a class as a custom element.
+ *
+ * @returns Custom element.
+ */
+export function component<Class extends new (...args: unknown[]) => object>(
+  value: Class,
+  context: ClassDecoratorContext<Class>,
+): any {
+  const plugin = getPlugin(context.metadata ?? {});
+
+  const attributeList = plugin.consume("observedAttributes");
+  const attributes = [...new Set(attributeList.flat())];
+  const attributesChangedCallbackFactories = plugin.consume(
+    "attributeChangedCallback",
+  );
+  const effectFactories = plugin.consume("effect");
+
+  return class extends HTMLElement {
+    readonly #props: object;
+    readonly #effects: Effect[];
+    readonly #attributesChangedCallbacks: AttributeChangedCallback[];
+
+    static observedAttributes = attributes;
+
+    constructor(...args: unknown[]) {
+      super();
+
+      const props = new value(...args);
+      this.#props = props;
+
+      const context = { props, container: this };
+      const effects = effectFactories.map((factory) => factory(context));
+      this.#effects = effects;
+
+      const attributesChangedCallbacks = attributesChangedCallbackFactories.map(
+        (factory) => factory(context),
+      );
+
+      this.#attributesChangedCallbacks = attributesChangedCallbacks;
+    }
+
+    connectedCallback(): void {
+      for (const effect of this.#effects) {
+        engine.register(effect);
+        effect.run();
+      }
+    }
+
+    disconnectedCallback(): void {
+      for (const effect of this.#effects) {
+        engine.unregister(effect);
+      }
+    }
+
+    attributeChangedCallback(
+      name: string,
+      oldValue: string | null,
+      newValue: string | null,
+    ): void {
+      for (const callback of this.#attributesChangedCallbacks) {
+        callback.call(this.#props, name, oldValue, newValue);
+      }
+    }
+  };
+}
+
 interface ClassDecorator<
-  Class extends abstract new (...args: unknown[]) => unknown,
+  Class extends abstract new (...args: unknown[]) => unknown = abstract new (
+    ...args: unknown[]
+  ) => unknown,
 > {
   (value: Class, context: ClassDecoratorContext<Class>): void;
 }
 
 /**
- * Define a class as a custom element.
+ * Register a class to custom element registry.
  *
  * @param name The custom element name.
- * @returns A class decorator that defines the custom element.
+ * @returns A class decorator that registers the class as a custom element.
  */
-export function component(
-  name: string,
-): ClassDecorator<new (...args: unknown[]) => object> {
-  return (value, context) => {
-    const plugin = getPlugin(context.metadata ?? {});
-
-    const attributeList = plugin.consume("observedAttributes");
-    const attributes = [...new Set(attributeList.flat())];
-    const attributesChangedCallbackFactories = plugin.consume(
-      "attributeChangedCallback",
-    );
-    const effectFactories = plugin.consume("effect");
-
+export function customElement(name: string): ClassDecorator {
+  return (_, context) => {
     context.addInitializer(function (): void {
-      customElements.define(name, this as CustomElementConstructor);
+      if (!isPrototypeOf(this, HTMLElement)) {
+        throw new TypeError("The decorated class must extend HTMLElement.");
+      }
+
+      customElements.define(name, this);
     });
-
-    return class extends HTMLElement {
-      readonly #props: object;
-      readonly #effects: Effect[];
-      readonly #attributesChangedCallbacks: AttributeChangedCallback[];
-
-      static observedAttributes = attributes;
-
-      constructor(...args: unknown[]) {
-        super();
-
-        const props = new value(...args);
-        this.#props = props;
-
-        const context = { props, container: this };
-        const effects = effectFactories.map((factory) => factory(context));
-        this.#effects = effects;
-
-        const attributesChangedCallbacks =
-          attributesChangedCallbackFactories.map((factory) => factory(context));
-
-        this.#attributesChangedCallbacks = attributesChangedCallbacks;
-      }
-
-      connectedCallback(): void {
-        for (const effect of this.#effects) {
-          engine.register(effect);
-          effect.run();
-        }
-      }
-
-      disconnectedCallback(): void {
-        for (const effect of this.#effects) {
-          engine.unregister(effect);
-        }
-      }
-
-      attributeChangedCallback(
-        name: string,
-        oldValue: string | null,
-        newValue: string | null,
-      ): void {
-        for (const callback of this.#attributesChangedCallbacks) {
-          callback.call(this.#props, name, oldValue, newValue);
-        }
-      }
-    };
   };
+}
+
+function isPrototypeOf<T extends abstract new (...args: unknown[]) => unknown>(
+  value: unknown,
+  prototype: T,
+): value is T {
+  return typeof value === "function" && value.prototype instanceof prototype;
 }
