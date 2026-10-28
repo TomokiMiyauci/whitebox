@@ -1,34 +1,63 @@
 import type { Scheduler } from "./scheduler.ts";
 
-type AnyState = State<any>;
+type AnyState = State<unknown>;
 
 interface Equality<T> {
-  (left: T, right: T): boolean;
+  equals(left: T, right: T): boolean;
 }
 
-let activeEffect: Effect | undefined;
+class ReactiveContext extends EventTarget {}
 
-export class State<T> {
+interface ReactiveContext extends EventTarget {
+  addEventListener(
+    type: "get",
+    listener: (ev: CustomEvent<AnyState>) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: "get",
+    listener: (ev: CustomEvent<AnyState>) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+}
+
+const context = new ReactiveContext();
+
+export class State<T> implements Equality<T> {
   #current: T;
-  #equals: Equality<T>;
 
-  constructor(current: T, equals: Equality<T> = Object.is) {
+  constructor(current: T) {
     this.#current = current;
-    this.#equals = equals;
   }
 
-  get value(): T {
-    activeEffect?.track(this);
+  get get(): T {
+    context.dispatchEvent(new CustomEvent("get", { detail: this }));
+
     return this.#current;
   }
 
-  setValue(value: T): boolean {
-    if (this.#equals(this.#current, value)) {
+  set(value: T): boolean {
+    if (this.equals(this.#current, value)) {
       return false;
     }
 
     this.#current = value;
+
     return true;
+  }
+
+  equals(left: T, right: T): boolean {
+    return Object.is(left, right);
   }
 }
 
@@ -40,10 +69,6 @@ export class Effect {
     this.fn = fn;
   }
 
-  track(state: AnyState): void {
-    this.deps.add(state);
-  }
-
   dependsOn(state: AnyState): boolean {
     return this.deps.has(state);
   }
@@ -53,16 +78,20 @@ export class Effect {
   };
 
   run(): void {
-    const previous = activeEffect;
-    this.deps = new WeakSet();
+    const deps = new WeakSet<AnyState>();
 
-    activeEffect = this;
+    function handler(ev: CustomEvent<AnyState>): void {
+      deps.add(ev.detail);
+    }
+
+    context.addEventListener("get", handler);
 
     try {
       this.fn();
     } finally {
-      activeEffect = previous;
+      context.removeEventListener("get", handler);
     }
+    this.deps = deps;
   }
 }
 
@@ -83,7 +112,7 @@ export class Engine {
   }
 
   mutate<T>(state: State<T>, value: T): void {
-    if (!state.setValue(value)) {
+    if (!state.set(value)) {
       return;
     }
 

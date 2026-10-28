@@ -63,7 +63,7 @@ export class Observer {
       enumerable: true,
 
       get(): unknown {
-        return state.value;
+        return state.get;
       },
 
       set(next: unknown): void {
