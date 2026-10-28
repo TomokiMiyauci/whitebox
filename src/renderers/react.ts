@@ -2,6 +2,7 @@ import type { Renderer } from "../renderer.ts";
 import { createRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
 import { getPlugin } from "../plugin.ts";
+import { Effect } from "../reactive.ts";
 
 export class ReactRenderer<P> implements Renderer<P> {
   readonly #fn: (props: P) => ReactNode;
@@ -42,7 +43,12 @@ export function template<T>(
 ) => void {
   return (_: unknown, context: ClassDecoratorContext) => {
     const plugin = getPlugin(context.metadata ?? {});
+    const renderer = new ReactRenderer(fn);
 
-    plugin.provide("renderer", new ReactRenderer(fn));
+    plugin.provide(
+      "effect",
+      ({ props, container }) =>
+        new Effect(() => renderer.render(props as T, container)),
+    );
   };
 }
