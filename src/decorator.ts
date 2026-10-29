@@ -120,7 +120,6 @@ export function component<Class extends new (...args: unknown[]) => object>(
   const effectFactories = plugin.consume("effect");
 
   return class extends HTMLElement {
-    readonly #props: object;
     readonly #effects: InstanceType<typeof Effect>[];
     readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
@@ -130,7 +129,6 @@ export function component<Class extends new (...args: unknown[]) => object>(
       super();
 
       const props = new value(...args);
-      this.#props = props;
 
       const context = { props, container: this };
       const effects = effectFactories.map((factory) => factory(context));
@@ -157,7 +155,7 @@ export function component<Class extends new (...args: unknown[]) => object>(
       newValue: string | null,
     ): void {
       for (const callback of this.#attributesChangedCallbacks) {
-        callback.call(this.#props, name, oldValue, newValue);
+        callback(name, oldValue, newValue);
       }
     }
   };
