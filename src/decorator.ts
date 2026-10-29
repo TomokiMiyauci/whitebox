@@ -1,4 +1,4 @@
-import { observe, Effect } from "./global.ts";
+import { Effect, State } from "./global.ts";
 import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
 
 /**
@@ -21,7 +21,20 @@ export function reactive(
   context: ClassFieldDecoratorContext<object>,
 ): void {
   context.addInitializer(function (): void {
-    observe(this, context.name);
+    const state = new State(Reflect.get(this, context.name));
+
+    Object.defineProperty(this, context.name, {
+      configurable: true,
+      enumerable: true,
+
+      get(): unknown {
+        return state.get;
+      },
+
+      set(next: unknown): void {
+        state.set(next);
+      },
+    });
   });
 }
 
