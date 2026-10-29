@@ -2,36 +2,27 @@ interface Equality<T> {
   equals(left: T, right: T): boolean;
 }
 
-export class ReactiveContext extends EventTarget {
+export class ReactiveContext {
   readonly effects: Set<Effect> = new Set();
-}
 
-export interface ReactiveContext extends EventTarget {
-  addEventListener<K extends keyof CustomEventMap>(
-    type: K,
-    listener: (ev: CustomEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  removeEventListener<K extends keyof CustomEventMap>(
-    type: K,
-    listener: (ev: CustomEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-}
+  activeEffect: Effect | undefined;
+  #onChange: (action: VoidFunction) => void;
 
-interface CustomEventMap {
-  get: CustomEvent<WeakKey>;
-  set: CustomEvent<WeakKey>;
+  constructor(onChange: (action: VoidFunction) => void) {
+    this.#onChange = onChange;
+  }
+
+  track(ref: WeakKey): void {
+    this.activeEffect?.track(ref);
+  }
+
+  notifyChange(ref: WeakKey): void {
+    for (const effect of this.effects) {
+      if (effect.dependsOn(ref)) {
+        this.#onChange(effect.scheduledRun);
+      }
+    }
+  }
 }
 
 export class State<T> implements Equality<T> {
@@ -44,8 +35,7 @@ export class State<T> implements Equality<T> {
   }
 
   get get(): T {
-    this.#context.dispatchEvent(new CustomEvent("get", { detail: this }));
-
+    this.#context.track(this);
     return this.#current;
   }
 
@@ -55,8 +45,7 @@ export class State<T> implements Equality<T> {
     }
 
     this.#current = value;
-
-    this.#context.dispatchEvent(new CustomEvent("set", { detail: this }));
+    this.#context.notifyChange(this);
 
     return true;
   }
@@ -67,43 +56,44 @@ export class State<T> implements Equality<T> {
 }
 
 export class Effect {
-  private deps = new WeakSet<WeakKey>();
-  private fn: VoidFunction;
+  #deps = new Set<WeakKey>();
+  #fn: VoidFunction;
   #context: ReactiveContext;
 
   constructor(context: ReactiveContext, fn: VoidFunction) {
-    this.fn = fn;
+    this.#fn = fn;
     this.#context = context;
 
     context.effects.add(this);
   }
 
-  dependsOn(ref: WeakKey): boolean {
-    return this.deps.has(ref);
+  track(ref: WeakKey): void {
+    this.#deps.add(ref);
   }
 
+  dependsOn(ref: WeakKey): boolean {
+    return this.#deps.has(ref);
+  }
+
+  readonly scheduledRun: VoidFunction = () => {
+    this.run();
+  };
+
   run(): void {
-    const deps = new WeakSet<WeakKey>();
-
-    function handler(ev: CustomEvent<WeakKey>): void {
-      deps.add(ev.detail);
-    }
-
-    this.#context.addEventListener("get", handler);
+    const previous = this.#context.activeEffect;
+    this.#context.activeEffect = this;
 
     try {
-      this.fn();
+      this.#fn();
     } finally {
-      this.#context.removeEventListener("get", handler);
+      this.#context.activeEffect = previous;
     }
-    this.deps = deps;
   }
 }
 
 export interface ReactiveSystem {
   State: StateConstructor;
   Effect: EffectConstructor;
-  listen(callback: (action: VoidFunction) => void): VoidFunction;
 }
 
 export interface StateConstructor {
@@ -114,30 +104,13 @@ export interface EffectConstructor {
   new (fn: VoidFunction): Effect;
 }
 
-export function createReactiveSystem(): ReactiveSystem {
-  const context = new ReactiveContext();
-
-  function listen(callback: (action: VoidFunction) => void): VoidFunction {
-    const handler = (ev: CustomEventMap["set"]): void => {
-      const state = ev.detail;
-      for (const effect of context.effects) {
-        if (effect.dependsOn(state)) {
-          const action = effect.run.bind(effect);
-          callback(action);
-        }
-      }
-    };
-
-    context.addEventListener("set", handler);
-
-    return () => {
-      context.removeEventListener("set", handler);
-    };
-  }
+export function createReactiveSystem(
+  onChange: (action: VoidFunction) => void,
+): ReactiveSystem {
+  const context = new ReactiveContext(onChange);
 
   return {
     State: State.bind(null, context) as StateConstructor,
     Effect: Effect.bind(null, context),
-    listen,
   };
 }
