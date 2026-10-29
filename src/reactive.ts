@@ -82,10 +82,6 @@ export class Effect {
     return this.deps.has(ref);
   }
 
-  readonly scheduledRun: VoidFunction = () => {
-    this.run();
-  };
-
   run(): void {
     const deps = new WeakSet<WeakKey>();
 
