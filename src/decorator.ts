@@ -1,6 +1,5 @@
-import { observe, engine } from "./global.ts";
+import { observe, engine, Effect } from "./global.ts";
 import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
-import { Effect } from "./reactive.ts";
 
 /**
  * Marks a class field as reactive.
@@ -109,7 +108,7 @@ export function component<Class extends new (...args: unknown[]) => object>(
 
   return class extends HTMLElement {
     readonly #props: object;
-    readonly #effects: Effect[];
+    readonly #effects: InstanceType<typeof Effect>[];
     readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
     static observedAttributes = attributes;

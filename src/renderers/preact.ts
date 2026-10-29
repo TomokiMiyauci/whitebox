@@ -1,7 +1,7 @@
 import type { Renderer } from "../renderer.ts";
 import { render, type VNode } from "preact";
 import { getPlugin } from "../plugin.ts";
-import { Effect } from "../reactive.ts";
+import { Effect } from "../global.ts";
 
 export class PreactRenderer<P> implements Renderer<P> {
   #fn: (props: P) => VNode;

@@ -1,4 +1,4 @@
-import { State } from "./reactive.ts";
+import { State } from "./global.ts";
 
 export class Observer {
   observe(target: object, property: PropertyKey): void {

@@ -2,7 +2,7 @@ import type { Renderer } from "../renderer.ts";
 import { createRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
 import { getPlugin } from "../plugin.ts";
-import { Effect } from "../reactive.ts";
+import { Effect } from "../global.ts";
 
 export class ReactRenderer<P> implements Renderer<P> {
   readonly #fn: (props: P) => ReactNode;

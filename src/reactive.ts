@@ -36,17 +36,17 @@ interface CustomEventMap {
   set: CustomEvent<AnyState>;
 }
 
-const context = new ReactiveContext();
-
 export class State<T> implements Equality<T> {
   #current: T;
+  #context: ReactiveContext;
 
-  constructor(current: T) {
+  constructor(context: ReactiveContext, current: T) {
     this.#current = current;
+    this.#context = context;
   }
 
   get get(): T {
-    context.dispatchEvent(new CustomEvent("get", { detail: this }));
+    this.#context.dispatchEvent(new CustomEvent("get", { detail: this }));
 
     return this.#current;
   }
@@ -58,7 +58,7 @@ export class State<T> implements Equality<T> {
 
     this.#current = value;
 
-    context.dispatchEvent(new CustomEvent("set", { detail: this }));
+    this.#context.dispatchEvent(new CustomEvent("set", { detail: this }));
 
     return true;
   }
@@ -71,9 +71,11 @@ export class State<T> implements Equality<T> {
 export class Effect {
   private deps = new WeakSet<AnyState>();
   private fn: VoidFunction;
+  #context: ReactiveContext;
 
-  constructor(fn: VoidFunction) {
+  constructor(context: ReactiveContext, fn: VoidFunction) {
     this.fn = fn;
+    this.#context = context;
   }
 
   dependsOn(state: AnyState): boolean {
@@ -91,12 +93,12 @@ export class Effect {
       deps.add(ev.detail);
     }
 
-    context.addEventListener("get", handler);
+    this.#context.addEventListener("get", handler);
 
     try {
       this.fn();
     } finally {
-      context.removeEventListener("get", handler);
+      this.#context.removeEventListener("get", handler);
     }
     this.deps = deps;
   }
@@ -105,9 +107,11 @@ export class Effect {
 export class Engine {
   private effects = new Set<Effect>();
   #scheduler: Scheduler;
+  #context: ReactiveContext;
 
-  constructor(scheduler: Scheduler) {
+  constructor(context: ReactiveContext, scheduler: Scheduler) {
     this.#scheduler = scheduler;
+    this.#context = context;
   }
 
   register(effect: Effect): void {
@@ -128,10 +132,34 @@ export class Engine {
       }
     };
 
-    context.addEventListener("set", handler);
+    this.#context.addEventListener("set", handler);
 
     return () => {
-      context.removeEventListener("set", handler);
+      this.#context.removeEventListener("set", handler);
     };
   }
+}
+
+export interface ReactiveSystem {
+  State: StateConstructor;
+  Effect: EffectConstructor;
+  Engine: { new (scheduler: Scheduler): Engine };
+}
+
+export interface StateConstructor {
+  new <T>(init: T): State<T>;
+}
+
+export interface EffectConstructor {
+  new (fn: VoidFunction): Effect;
+}
+
+export function createReactiveSystem(): ReactiveSystem {
+  const context = new ReactiveContext();
+
+  return {
+    State: State.bind(null, context) as StateConstructor,
+    Effect: Effect.bind(null, context),
+    Engine: Engine.bind(null, context),
+  };
 }

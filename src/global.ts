@@ -1,6 +1,8 @@
 import { Observer } from "./pubsub.ts";
-import { Engine } from "./reactive.ts";
+import { createReactiveSystem } from "./reactive.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
+
+export const { Effect, State, Engine } = createReactiveSystem();
 
 const scheduler = new MicrotaskScheduler();
 const engine = new Engine(scheduler);
