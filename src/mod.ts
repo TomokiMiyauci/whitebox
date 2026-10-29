@@ -5,4 +5,3 @@ export {
   reactive,
   customElement,
 } from "./decorator.ts";
-export { observe } from "./global.ts";
