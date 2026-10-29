@@ -1,14 +1,14 @@
 import type { Scheduler } from "./scheduler.ts";
 
-type AnyState = State<unknown>;
-
 interface Equality<T> {
   equals(left: T, right: T): boolean;
 }
 
-class ReactiveContext extends EventTarget {}
+export class ReactiveContext extends EventTarget {
+  effects: Set<Effect> = new Set();
+}
 
-interface ReactiveContext extends EventTarget {
+export interface ReactiveContext extends EventTarget {
   addEventListener<K extends keyof CustomEventMap>(
     type: K,
     listener: (ev: CustomEventMap[K]) => any,
@@ -32,8 +32,8 @@ interface ReactiveContext extends EventTarget {
 }
 
 interface CustomEventMap {
-  get: CustomEvent<AnyState>;
-  set: CustomEvent<AnyState>;
+  get: CustomEvent<WeakKey>;
+  set: CustomEvent<WeakKey>;
 }
 
 export class State<T> implements Equality<T> {
@@ -69,17 +69,19 @@ export class State<T> implements Equality<T> {
 }
 
 export class Effect {
-  private deps = new WeakSet<AnyState>();
+  private deps = new WeakSet<WeakKey>();
   private fn: VoidFunction;
   #context: ReactiveContext;
 
   constructor(context: ReactiveContext, fn: VoidFunction) {
     this.fn = fn;
     this.#context = context;
+
+    context.effects.add(this);
   }
 
-  dependsOn(state: AnyState): boolean {
-    return this.deps.has(state);
+  dependsOn(ref: WeakKey): boolean {
+    return this.deps.has(ref);
   }
 
   readonly scheduledRun: VoidFunction = () => {
@@ -87,9 +89,9 @@ export class Effect {
   };
 
   run(): void {
-    const deps = new WeakSet<AnyState>();
+    const deps = new WeakSet<WeakKey>();
 
-    function handler(ev: CustomEvent<AnyState>): void {
+    function handler(ev: CustomEvent<WeakKey>): void {
       deps.add(ev.detail);
     }
 
@@ -105,7 +107,6 @@ export class Effect {
 }
 
 export class Engine {
-  private effects = new Set<Effect>();
   #scheduler: Scheduler;
   #context: ReactiveContext;
 
@@ -114,18 +115,10 @@ export class Engine {
     this.#context = context;
   }
 
-  register(effect: Effect): void {
-    this.effects.add(effect);
-  }
-
-  unregister(effect: Effect): void {
-    this.effects.delete(effect);
-  }
-
   start(): VoidFunction {
     const handler = (ev: CustomEventMap["set"]): void => {
       const state = ev.detail;
-      for (const effect of this.effects) {
+      for (const effect of this.#context.effects) {
         if (effect.dependsOn(state)) {
           this.#scheduler.schedule(effect.scheduledRun);
         }

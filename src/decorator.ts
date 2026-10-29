@@ -1,4 +1,4 @@
-import { observe, engine, Effect } from "./global.ts";
+import { observe, Effect } from "./global.ts";
 import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
 
 /**
@@ -132,16 +132,11 @@ export function component<Class extends new (...args: unknown[]) => object>(
 
     connectedCallback(): void {
       for (const effect of this.#effects) {
-        engine.register(effect);
         effect.run();
       }
     }
 
-    disconnectedCallback(): void {
-      for (const effect of this.#effects) {
-        engine.unregister(effect);
-      }
-    }
+    disconnectedCallback(): void {}
 
     attributeChangedCallback(
       name: string,
