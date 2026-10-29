@@ -1,11 +1,9 @@
-import type { Scheduler } from "./scheduler.ts";
-
 interface Equality<T> {
   equals(left: T, right: T): boolean;
 }
 
 export class ReactiveContext extends EventTarget {
-  effects: Set<Effect> = new Set();
+  readonly effects: Set<Effect> = new Set();
 }
 
 export interface ReactiveContext extends EventTarget {
@@ -106,37 +104,10 @@ export class Effect {
   }
 }
 
-export class Engine {
-  #scheduler: Scheduler;
-  #context: ReactiveContext;
-
-  constructor(context: ReactiveContext, scheduler: Scheduler) {
-    this.#scheduler = scheduler;
-    this.#context = context;
-  }
-
-  start(): VoidFunction {
-    const handler = (ev: CustomEventMap["set"]): void => {
-      const state = ev.detail;
-      for (const effect of this.#context.effects) {
-        if (effect.dependsOn(state)) {
-          this.#scheduler.schedule(effect.scheduledRun);
-        }
-      }
-    };
-
-    this.#context.addEventListener("set", handler);
-
-    return () => {
-      this.#context.removeEventListener("set", handler);
-    };
-  }
-}
-
 export interface ReactiveSystem {
   State: StateConstructor;
   Effect: EffectConstructor;
-  Engine: { new (scheduler: Scheduler): Engine };
+  listen(callback: (action: VoidFunction) => void): VoidFunction;
 }
 
 export interface StateConstructor {
@@ -150,9 +121,27 @@ export interface EffectConstructor {
 export function createReactiveSystem(): ReactiveSystem {
   const context = new ReactiveContext();
 
+  function listen(callback: (action: VoidFunction) => void): VoidFunction {
+    const handler = (ev: CustomEventMap["set"]): void => {
+      const state = ev.detail;
+      for (const effect of context.effects) {
+        if (effect.dependsOn(state)) {
+          const action = effect.run.bind(effect);
+          callback(action);
+        }
+      }
+    };
+
+    context.addEventListener("set", handler);
+
+    return () => {
+      context.removeEventListener("set", handler);
+    };
+  }
+
   return {
     State: State.bind(null, context) as StateConstructor,
     Effect: Effect.bind(null, context),
-    Engine: Engine.bind(null, context),
+    listen,
   };
 }
