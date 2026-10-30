@@ -1,5 +1,3 @@
-import type { Effect } from "./reactive.ts";
-
 export interface AttributeChangedCallback {
   (name: string, oldValue: string | null, newValue: string | null): void;
 }
@@ -19,20 +17,16 @@ export interface Plugin {
     name: "attributeChangedCallback",
     value: AttributeChangedCallbackFactory,
   ): void;
-  provide(name: "effect", value: EffectFactory): void;
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallbackFactory[];
-  consume(name: "effect"): EffectFactory[];
 }
 
 export interface PluginRegistry {
   observedAttributes: string[][];
   attributeChangedCallback: AttributeChangedCallbackFactory[];
-  effect: EffectFactory[];
 }
 
-interface EffectFactory extends Factory<Effect> {}
 interface AttributeChangedCallbackFactory extends Factory<AttributeChangedCallback> {}
 
 class PluginImpl implements Plugin {
@@ -46,10 +40,9 @@ class PluginImpl implements Plugin {
     name: "attributeChangedCallback",
     value: AttributeChangedCallbackFactory,
   ): void;
-  provide(name: "effect", value: EffectFactory): void;
   provide(
     name: keyof PluginRegistry,
-    value: string[] | AttributeChangedCallbackFactory | EffectFactory | null,
+    value: string[] | AttributeChangedCallbackFactory | null,
   ): void {
     switch (name) {
       case "observedAttributes": {
@@ -62,18 +55,14 @@ class PluginImpl implements Plugin {
         );
         break;
       }
-      case "effect": {
-        this.#registry.effect.push(value as EffectFactory);
-      }
     }
   }
 
   consume(name: "observedAttributes"): string[][];
   consume(name: "attributeChangedCallback"): AttributeChangedCallbackFactory[];
-  consume(name: "effect"): EffectFactory[];
   consume(
     name: keyof PluginRegistry,
-  ): string[][] | AttributeChangedCallbackFactory[] | EffectFactory[] | null {
+  ): string[][] | AttributeChangedCallbackFactory[] | null {
     return this.#registry[name];
   }
 }
@@ -90,7 +79,6 @@ export function getPlugin(metadata: DecoratorMetadataObject): Plugin {
   const plugin = new PluginImpl({
     observedAttributes: [],
     attributeChangedCallback: [],
-    effect: [],
   });
 
   metadata[PLUGIN] = plugin;

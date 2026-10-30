@@ -128,10 +128,8 @@ export function component<Class extends new (...args: any) => HTMLElement>(
   const attributesChangedCallbackFactories = plugin.consume(
     "attributeChangedCallback",
   );
-  // const effectFactories = plugin.consume("effect");
 
   return class extends Value {
-    // readonly #effects: InstanceType<typeof Effect>[];
     readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
     static observedAttributes = attributes;
@@ -140,8 +138,6 @@ export function component<Class extends new (...args: any) => HTMLElement>(
       super(...args);
 
       const context = { props: this, container: this };
-      // const effects = effectFactories.map((factory) => factory(context));
-      // this.#effects = effects;
 
       const attributesChangedCallbacks = attributesChangedCallbackFactories.map(
         (factory) => factory(context),
@@ -149,14 +145,6 @@ export function component<Class extends new (...args: any) => HTMLElement>(
 
       this.#attributesChangedCallbacks = attributesChangedCallbacks;
     }
-
-    connectedCallback(): void {
-      // for (const effect of this.#effects) {
-      //   effect.run();
-      // }
-    }
-
-    disconnectedCallback(): void {}
 
     attributeChangedCallback(
       name: string,
