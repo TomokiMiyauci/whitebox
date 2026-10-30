@@ -1,7 +1,6 @@
 import type { Renderer } from "../renderer.ts";
 import { createRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
-import { getPlugin } from "../plugin.ts";
 import { Effect } from "../global.ts";
 
 export class ReactRenderer<P> implements Renderer<P> {
@@ -35,20 +34,22 @@ export class ReactRenderer<P> implements Renderer<P> {
   }
 }
 
-export function template<T>(
-  fn: (props: T) => ReactNode,
-): (
-  _: unknown,
-  context: ClassDecoratorContext<abstract new (...args: unknown[]) => T>,
-) => void {
-  return (_: unknown, context: ClassDecoratorContext) => {
-    const plugin = getPlugin(context.metadata ?? {});
-    const renderer = new ReactRenderer(fn);
+type Constructor = new (...args: any[]) => HTMLElement;
 
-    plugin.provide(
-      "effect",
-      ({ props, container }) =>
-        new Effect(() => renderer.render(props as T, container)),
-    );
+export function template<T extends Constructor>(
+  fn: (props: InstanceType<T>) => ReactNode,
+) {
+  return (constructor: T): T => {
+    return class extends constructor {
+      constructor(...args: any[]) {
+        super(...args);
+        const renderer = new ReactRenderer(fn);
+        const bound = () => renderer.render(this as InstanceType<T>, this);
+
+        const effect = new Effect(bound);
+
+        effect.run();
+      }
+    };
   };
 }
