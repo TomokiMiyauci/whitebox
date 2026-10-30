@@ -173,21 +173,12 @@ interface ClassDecorator<
  * @param name The custom element name.
  * @returns A class decorator that registers the class as a custom element.
  */
-export function customElement(name: string): ClassDecorator {
+export function customElement(
+  name: string,
+): ClassDecorator<CustomElementConstructor> {
   return (_, context) => {
     context.addInitializer(function (): void {
-      if (!isPrototypeOf(this, HTMLElement)) {
-        throw new TypeError("The decorated class must extend HTMLElement.");
-      }
-
       customElements.define(name, this);
     });
   };
-}
-
-function isPrototypeOf<T extends abstract new (...args: unknown[]) => unknown>(
-  value: unknown,
-  prototype: T,
-): value is T {
-  return typeof value === "function" && value.prototype instanceof prototype;
 }
