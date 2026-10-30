@@ -58,14 +58,25 @@ export function reactive(
  * }
  * ```
  */
-export function effect(
-  value: VoidFunction,
-  context: ClassMethodDecoratorContext,
-): void {
-  const plugin = getPlugin(context.metadata ?? {});
+export function effect<C extends Constructor>(
+  action: (instance: InstanceType<C>) => void,
+): (value: C) => C {
+  return (value) => {
+    return class extends value {
+      constructor(...args: any) {
+        super(...args);
 
-  plugin.provide("effect", ({ props }) => new Effect(value.bind(props)));
+        const bound = () => action(this as InstanceType<C>);
+
+        const effect = new Effect(bound);
+
+        effect.run();
+      }
+    };
+  };
 }
+
+type Constructor = new (...args: any) => any;
 
 /**
  * Marks a class field as an HTML attribute.
@@ -117,10 +128,10 @@ export function component<Class extends new (...args: any) => HTMLElement>(
   const attributesChangedCallbackFactories = plugin.consume(
     "attributeChangedCallback",
   );
-  const effectFactories = plugin.consume("effect");
+  // const effectFactories = plugin.consume("effect");
 
   return class extends Value {
-    readonly #effects: InstanceType<typeof Effect>[];
+    // readonly #effects: InstanceType<typeof Effect>[];
     readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
     static observedAttributes = attributes;
@@ -129,8 +140,8 @@ export function component<Class extends new (...args: any) => HTMLElement>(
       super(...args);
 
       const context = { props: this, container: this };
-      const effects = effectFactories.map((factory) => factory(context));
-      this.#effects = effects;
+      // const effects = effectFactories.map((factory) => factory(context));
+      // this.#effects = effects;
 
       const attributesChangedCallbacks = attributesChangedCallbackFactories.map(
         (factory) => factory(context),
@@ -140,9 +151,9 @@ export function component<Class extends new (...args: any) => HTMLElement>(
     }
 
     connectedCallback(): void {
-      for (const effect of this.#effects) {
-        effect.run();
-      }
+      // for (const effect of this.#effects) {
+      //   effect.run();
+      // }
     }
 
     disconnectedCallback(): void {}
