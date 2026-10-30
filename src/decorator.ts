@@ -106,10 +106,10 @@ export function attr(
  *
  * @returns Custom element.
  */
-export function component<Class extends new (...args: unknown[]) => object>(
-  value: Class,
+export function component<Class extends new (...args: any) => HTMLElement>(
+  Value: Class,
   context: ClassDecoratorContext<Class>,
-): any {
+): Class {
   const plugin = getPlugin(context.metadata ?? {});
 
   const attributeList = plugin.consume("observedAttributes");
@@ -119,18 +119,16 @@ export function component<Class extends new (...args: unknown[]) => object>(
   );
   const effectFactories = plugin.consume("effect");
 
-  return class extends HTMLElement {
+  return class extends Value {
     readonly #effects: InstanceType<typeof Effect>[];
     readonly #attributesChangedCallbacks: AttributeChangedCallback[];
 
     static observedAttributes = attributes;
 
-    constructor(...args: unknown[]) {
-      super();
+    constructor(...args: any) {
+      super(...args);
 
-      const props = new value(...args);
-
-      const context = { props, container: this };
+      const context = { props: this, container: this };
       const effects = effectFactories.map((factory) => factory(context));
       this.#effects = effects;
 
