@@ -181,3 +181,28 @@ export function customElement(
     });
   };
 }
+
+/**
+ * Applies a CSS stylesheet to the component's Shadow Root or the document.
+ *
+ * If the component has a Shadow Root, the stylesheet is adopted by that root.
+ * Otherwise, it is adopted by the document.
+ *
+ * @param stylesheet The CSS stylesheet to apply.
+ * @returns A class decorator that applies the stylesheet during construction.
+ */
+export function style(
+  stylesheet: CSSStyleSheet,
+): <T extends new (...args: any) => HTMLElement>(value: T) => T {
+  return (value) => {
+    return class extends value {
+      constructor(...args: any) {
+        super(...args);
+
+        const root = this.shadowRoot ? this.shadowRoot : document;
+        const sheets = new Set(root.adoptedStyleSheets).add(stylesheet);
+        root.adoptedStyleSheets = sheets.values().toArray();
+      }
+    };
+  };
+}

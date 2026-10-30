@@ -4,4 +4,5 @@ export {
   effect,
   reactive,
   customElement,
+  style,
 } from "./decorator.ts";
