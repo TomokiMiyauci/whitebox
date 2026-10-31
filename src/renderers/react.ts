@@ -1,7 +1,11 @@
-import type { Renderer } from "../renderer.ts";
 import { createRoot, type Root } from "react-dom/client";
 import type { ReactNode } from "react";
 import { Effect } from "../global.ts";
+
+interface Renderer<P> {
+  render(props: P, container: HTMLElement): void;
+  dispose(containerr: HTMLElement): void;
+}
 
 export class ReactRenderer<P> implements Renderer<P> {
   readonly #fn: (props: P) => ReactNode;
