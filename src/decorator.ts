@@ -6,8 +6,7 @@ import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
  *
  * Registers the field for change observation when the instance is initialized.
  *
- * @param _ The initial field value.
- * @param context The class field decorator context.
+ * @param target The class field decorator target.
  * @example
  * ```ts
  * class Counter {
@@ -16,26 +15,32 @@ import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
  * }
  * ```
  */
-export function reactive(
-  _: unknown,
-  context: ClassFieldDecoratorContext<object>,
-): void {
-  context.addInitializer(function (): void {
-    const state = new State(Reflect.get(this, context.name));
+export function reactive<T>(
+  target: ClassAccessorDecoratorTarget<object, T>,
+): ClassAccessorDecoratorResult<object, T> {
+  const key = Symbol();
 
-    Object.defineProperty(this, context.name, {
-      configurable: true,
-      enumerable: true,
+  return {
+    get() {
+      const state: InstanceType<typeof State<T>> = Reflect.get(this, key);
 
-      get(): unknown {
-        return state.get;
-      },
+      target.get?.call(this);
+      return state.get;
+    },
 
-      set(next: unknown): void {
-        state.set(next);
-      },
-    });
-  });
+    set(value) {
+      const state: InstanceType<typeof State<T>> = Reflect.get(this, key);
+
+      target.set?.call(this, value);
+
+      state.set(value);
+    },
+
+    init(value) {
+      Reflect.set(this, key, new State(value));
+      return value;
+    },
+  };
 }
 
 /**
@@ -81,8 +86,8 @@ type Constructor = new (...args: any) => any;
 /**
  * Marks a class field as an HTML attribute.
  *
- * @param _ The initial field value.
- * @param context - The class field decorator context.
+ * @param target The class field decorator target.
+ * @param context The class field decorator context.
  * @throws {Error} If the field name is not `string`.
  * @example
  * ```ts
@@ -93,23 +98,29 @@ type Constructor = new (...args: any) => any;
  * ```
  */
 export function attr(
-  _: unknown,
-  context: ClassFieldDecoratorContext<object>,
-): void {
-  const { name, metadata } = context;
+  target: ClassAccessorDecoratorTarget<Element, string | null>,
+  context: ClassAccessorDecoratorContext<Element, string | null>,
+): ClassAccessorDecoratorResult<Element, string | null> {
+  const name = context.name;
 
   if (typeof name !== "string") throw new Error();
 
-  const plugin = getPlugin(metadata ?? {});
+  return {
+    get(this: Element): string | null {
+      target.get?.call(this);
 
-  plugin.provide("observedAttributes", [name]);
-  plugin.provide(
-    "attributeChangedCallback",
-    ({ props }) =>
-      (_, __, newValue) => {
-        Reflect.set(props, name, newValue);
-      },
-  );
+      return this.getAttribute(name);
+    },
+    set(this: Element, value: string | null): void {
+      if (value === null) {
+        this.removeAttribute(name);
+      } else {
+        this.setAttribute(name, value);
+      }
+
+      target.set?.call(this, value);
+    },
+  };
 }
 
 /**
