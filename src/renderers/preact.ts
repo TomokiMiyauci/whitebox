@@ -2,7 +2,7 @@ import { render, type VNode } from "preact";
 import { Effect } from "../global.ts";
 
 /**
- * Renders a custom element's reactive instance with Preact renderer.
+ * Renders a custom element's reactive instance with Preact.
  *
  * @param fn Creates the Preact node from the custom element instance.
  * @returns A class decorator that rerenders when reactive dependencies change.

@@ -92,7 +92,7 @@ type Constructor = new (...args: any) => any;
  * @throws {Error} If the accessor name is not a string.
  * @example
  * ```ts
- * class MyButton exntends HTMLElement {
+ * class MyButton extends HTMLElement {
  *   @attr
  *   accessor label: string | null = null;
  * }
