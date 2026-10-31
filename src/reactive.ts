@@ -12,8 +12,8 @@ interface Equality<T> {
 
 /** Tracks reactive effects and schedules them when their dependencies change. */
 export class ReactiveContext {
-  /** Effects registered with this context. */
-  readonly effects: Set<Effect> = new Set();
+  /** Effects subscribed to each dependency key. */
+  readonly #subscribers = new WeakMap<WeakKey, Set<Effect>>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
@@ -58,15 +58,52 @@ export class ReactiveContext {
   }
 
   /**
+   * Updates the effects subscribed to a dependency set.
+   *
+   * @param effect The effect whose dependencies changed.
+   * @param previous The effect's previous dependency keys.
+   * @param next The effect's new dependency keys.
+   */
+  updateDependencies(
+    effect: Effect,
+    previous: ReadonlySet<WeakKey>,
+    next: ReadonlySet<WeakKey>,
+  ): void {
+    for (const ref of previous) {
+      if (next.has(ref)) continue;
+
+      const subscribers = this.#subscribers.get(ref);
+      subscribers?.delete(effect);
+
+      if (subscribers?.size === 0) {
+        this.#subscribers.delete(ref);
+      }
+    }
+
+    for (const ref of next) {
+      if (previous.has(ref)) continue;
+
+      let subscribers = this.#subscribers.get(ref);
+      if (!subscribers) {
+        subscribers = new Set();
+        this.#subscribers.set(ref, subscribers);
+      }
+
+      subscribers.add(effect);
+    }
+  }
+
+  /**
    * Schedules effects that depend on the given reactive value.
    *
    * @param ref The reactive value that changed.
    */
   notifyChange(ref: WeakKey): void {
-    for (const effect of this.effects) {
-      if (effect.dependsOn(ref)) {
-        this.#onChange(effect.scheduledRun);
-      }
+    const subscribers = this.#subscribers.get(ref);
+    if (!subscribers) return;
+
+    for (const effect of subscribers) {
+      this.#onChange(effect.scheduledRun);
     }
   }
 }
@@ -172,7 +209,7 @@ export class Effect {
   #context: ReactiveContext;
 
   /**
-   * Creates and registers an effect in a reactive context.
+   * Creates an effect in a reactive context.
    *
    * @param context The context that manages this effect.
    * @param fn The function to execute and track.
@@ -180,18 +217,6 @@ export class Effect {
   constructor(context: ReactiveContext, fn: VoidFunction) {
     this.#fn = fn;
     this.#context = context;
-
-    context.effects.add(this);
-  }
-
-  /**
-   * Checks whether this effect depends on a reactive value.
-   *
-   * @param ref The reactive value to check.
-   * @returns `true` if the value has been tracked by this effect.
-   */
-  dependsOn(ref: WeakKey): boolean {
-    return this.#deps.has(ref);
   }
 
   /** An action that runs this effect; suitable for passing to a scheduler. */
@@ -201,8 +226,10 @@ export class Effect {
 
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
+    const prevDeps = this.#deps;
     const { dependencies } = this.#context.capture(this.#fn);
 
+    this.#context.updateDependencies(this, prevDeps, dependencies);
     this.#deps = dependencies;
   }
 }

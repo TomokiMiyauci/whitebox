@@ -111,6 +111,25 @@ describe("Signal", () => {
 });
 
 describe("Effect", () => {
+  it("should subscribe after running", () => {
+    const scheduled: VoidFunction[] = [];
+    const context = new ReactiveContext((action) => scheduled.push(action));
+    const signal = new Signal(context, 1);
+    let runs = 0;
+    const effect = new Effect(context, () => {
+      runs++;
+      signal.get;
+    });
+
+    signal.set(2);
+    expect(scheduled).toHaveLength(0);
+
+    effect.run();
+    signal.set(3);
+    expect(scheduled).toHaveLength(1);
+    expect(runs).toBe(1);
+  });
+
   it("should capture dependency keys read during execution", () => {
     const context = new ReactiveContext(() => {});
     const dependency = {};
