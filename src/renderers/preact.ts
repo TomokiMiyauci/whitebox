@@ -1,9 +1,13 @@
 import { render, type VNode } from "preact";
 import { Effect } from "../global.ts";
 
-type Constructor = new (...args: any[]) => HTMLElement;
-
-export function template<T extends Constructor>(
+/**
+ * Renders a custom element's reactive instance with Preact renderer.
+ *
+ * @param fn Creates the Preact node from the custom element instance.
+ * @returns A class decorator that rerenders when reactive dependencies change.
+ */
+export function template<T extends new (...args: any[]) => HTMLElement>(
   fn: (props: InstanceType<T>) => VNode,
 ): (constructor: T) => T {
   return (constructor) => {

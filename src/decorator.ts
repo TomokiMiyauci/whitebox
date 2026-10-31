@@ -1,16 +1,17 @@
 import { Effect, Signal } from "./global.ts";
 
 /**
- * Marks a class field as reactive.
+ * Makes a class accessor reactive.
  *
- * Registers the field for change observation when the instance is initialized.
+ * Reads of the accessor are tracked by the active effect. Setting a different
+ * value schedules effects that depend on it.
  *
- * @param target The class field decorator target.
+ * @param target The class accessor decorator target.
  * @example
  * ```ts
  * class Counter {
  *   @reactive
- *   count = 0;
+ *   accessor count = 0;
  * }
  * ```
  */
@@ -43,22 +44,19 @@ export function reactive<T>(
 }
 
 /**
- * Marks a class method as an effect.
+ * Makes a class an effect that runs when its reactive dependencies change.
  *
- * Executes the method when its reactive dependencies change.
+ * The action runs once after the instance is constructed and again whenever a
+ * reactive value read by the action changes.
  *
- * @param value The decorated method.
- * @param context The class method decorator context.
+ * @param action The function to run with each constructed instance.
+ * @returns A class decorator that runs and tracks the action.
  * @example
  * ```ts
+ * @effect((instance) => console.log(instance.count))
  * class Counter {
  *   @reactive
- *   count = 0;
- *
- *   @effect
- *   logCount() {
- *     console.log(this.count);
- *   }
+ *   accessor count = 0;
  * }
  * ```
  */
@@ -80,19 +78,23 @@ export function effect<C extends Constructor>(
   };
 }
 
+/** Constructor type used to infer the instance passed to an effect action. */
 type Constructor = new (...args: any) => any;
 
 /**
- * Marks a class field as an HTML attribute.
+ * Reflects a class accessor to an HTML attribute on an element.
  *
- * @param target The class field decorator target.
- * @param context The class field decorator context.
- * @throws {Error} If the field name is not `string`.
+ * Reading the accessor returns the current attribute value. Setting it updates
+ * or removes the corresponding attribute.
+ *
+ * @param target The class accessor decorator target.
+ * @param context The class accessor decorator context.
+ * @throws {Error} If the accessor name is not a string.
  * @example
  * ```ts
- * class MyButton {
+ * class MyButton exntends HTMLElement {
  *   @attr
- *   label?: string;
+ *   accessor label: string | null = null;
  * }
  * ```
  */
@@ -122,6 +124,7 @@ export function attr(
   };
 }
 
+/** Type of a class decorator that does not replace the decorated class. */
 interface ClassDecorator<
   Class extends abstract new (...args: unknown[]) => unknown = abstract new (
     ...args: unknown[]
@@ -131,7 +134,7 @@ interface ClassDecorator<
 }
 
 /**
- * Register a class to custom element registry.
+ * Registers a class with the browser's custom element registry.
  *
  * @param name The custom element name.
  * @returns A class decorator that registers the class as a custom element.
@@ -147,7 +150,7 @@ export function customElement(
 }
 
 /**
- * Applies a CSS stylesheet to the component's Shadow Root or the document.
+ * Applies a CSS stylesheet to the component's shadow root or the document.
  *
  * If the component has a Shadow Root, the stylesheet is adopted by that root.
  * Otherwise, it is adopted by the document.
