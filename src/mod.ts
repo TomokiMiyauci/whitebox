@@ -1,8 +1,1 @@
-export {
-  attr,
-  component,
-  effect,
-  reactive,
-  customElement,
-  style,
-} from "./decorator.ts";
+export { attr, effect, reactive, customElement, style } from "./decorator.ts";

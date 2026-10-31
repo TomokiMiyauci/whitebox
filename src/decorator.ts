@@ -1,5 +1,4 @@
 import { Effect, State } from "./global.ts";
-import { getPlugin, type AttributeChangedCallback } from "./plugin.ts";
 
 /**
  * Marks a class field as reactive.
@@ -120,52 +119,6 @@ export function attr(
 
       target.set?.call(this, value);
     },
-  };
-}
-
-/**
- * Define a class as a custom element.
- *
- * @returns Custom element.
- */
-export function component<Class extends new (...args: any) => HTMLElement>(
-  Value: Class,
-  context: ClassDecoratorContext<Class>,
-): Class {
-  const plugin = getPlugin(context.metadata ?? {});
-
-  const attributeList = plugin.consume("observedAttributes");
-  const attributes = [...new Set(attributeList.flat())];
-  const attributesChangedCallbackFactories = plugin.consume(
-    "attributeChangedCallback",
-  );
-
-  return class extends Value {
-    readonly #attributesChangedCallbacks: AttributeChangedCallback[];
-
-    static observedAttributes = attributes;
-
-    constructor(...args: any) {
-      super(...args);
-
-      const context = { props: this, container: this };
-
-      const attributesChangedCallbacks = attributesChangedCallbackFactories.map(
-        (factory) => factory(context),
-      );
-
-      this.#attributesChangedCallbacks = attributesChangedCallbacks;
-    }
-
-    attributeChangedCallback(
-      name: string,
-      oldValue: string | null,
-      newValue: string | null,
-    ): void {
-      for (const callback of this.#attributesChangedCallbacks) {
-        callback(name, oldValue, newValue);
-      }
-    }
   };
 }
 
