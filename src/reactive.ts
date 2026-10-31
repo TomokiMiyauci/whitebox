@@ -15,8 +15,8 @@ export class ReactiveContext {
   /** Effects registered with this context. */
   readonly effects: Set<Effect> = new Set();
 
-  /** The effect currently collecting dependencies, if any. */
-  activeEffect: Effect | undefined;
+  /** Dependencies collected by the current capture operation, if any. */
+  #activeDependencies: Set<WeakKey> | undefined;
 
   /** Schedules an effect action after one of its dependencies changes. */
   #onChange: (action: VoidFunction) => void;
@@ -31,12 +31,30 @@ export class ReactiveContext {
   }
 
   /**
+   * Runs a function while collecting its dependency keys.
+   *
+   * @param fn The function to run.
+   * @returns The function result and the dependency keys read during execution.
+   */
+  capture<T>(fn: () => T): { value: T; dependencies: Set<WeakKey> } {
+    const previousDependencies = this.#activeDependencies;
+    const dependencies = new Set<WeakKey>();
+    this.#activeDependencies = dependencies;
+
+    try {
+      return { value: fn(), dependencies };
+    } finally {
+      this.#activeDependencies = previousDependencies;
+    }
+  }
+
+  /**
    * Records a dependency on the currently active effect.
    *
    * @param ref The reactive value being read.
    */
   track(ref: WeakKey): void {
-    this.activeEffect?.track(ref);
+    this.#activeDependencies?.add(ref);
   }
 
   /**
@@ -167,15 +185,6 @@ export class Effect {
   }
 
   /**
-   * Adds a reactive value to this effect's dependencies.
-   *
-   * @param ref The reactive value read by the effect.
-   */
-  track(ref: WeakKey): void {
-    this.#deps.add(ref);
-  }
-
-  /**
    * Checks whether this effect depends on a reactive value.
    *
    * @param ref The reactive value to check.
@@ -192,15 +201,9 @@ export class Effect {
 
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
-    const previous = this.#context.activeEffect;
-    this.#deps.clear();
-    this.#context.activeEffect = this;
+    const { dependencies } = this.#context.capture(this.#fn);
 
-    try {
-      this.#fn();
-    } finally {
-      this.#context.activeEffect = previous;
-    }
+    this.#deps = dependencies;
   }
 }
 
