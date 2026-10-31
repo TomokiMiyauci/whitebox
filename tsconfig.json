@@ -9,6 +9,7 @@
     "erasableSyntaxOnly": true,
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "module": "esnext"
   }
 }
