@@ -35,8 +35,9 @@ npx jsr add @whitebox/preact
 The following example defines a custom button with a reactive counter, `label` attribute, and an effect that logs the counter value whenever it changes.
 
 ```tsx
-import { customElement, attr, reactive, effect } from "@whitebox/core";
+import { customElement, attr, reactive, effect, style } from "@whitebox/core";
 import { template } from "@whitebox/react";
+import css from "./style.css" with { type: "css" };
 
 @customElement("my-button")
 @template(({ count, handleClick, label }) => (
@@ -44,30 +45,32 @@ import { template } from "@whitebox/react";
     {count}
   </button>
 ))
-class MyButton {
+@style(css)
+@effect((instance) => instance.log())
+class MyButton extends HTMLElement {
   @reactive
-  count = 0;
+  accessor count = 0;
 
   handleClick = (): void => {
     this.count++;
   };
 
-  @effect
-  #log(): void {
+  log(): void {
     console.log(this.count);
   }
 
   @attr
   @reactive
-  label?: string;
+  accessor label: string | null = null;
 }
 ```
 
 - `@customElement` registers the class as a custom element.
 - `@template` declares its rendered UI using the selected renderer.
+- `@style` applies a `CSSStyleSheet` to the shadow root if available, otherwise to the document.
+- `@effect` runs a side effect that tracks and logs changes to count.
 - `@reactive` makes a property reactive, allowing changes to update dependent behavior.
 - `@attr` exposes label as a custom element attribute.
-- `@effect` runs a side effect that tracks and logs changes to count.
 
 ## License
 
