@@ -42,8 +42,8 @@ type Constructor = new (...args: any[]) => HTMLElement;
 
 export function template<T extends Constructor>(
   fn: (props: InstanceType<T>) => ReactNode,
-) {
-  return (constructor: T): T => {
+): (constructor: T) => T {
+  return (constructor) => {
     return class extends constructor {
       constructor(...args: any[]) {
         super(...args);
