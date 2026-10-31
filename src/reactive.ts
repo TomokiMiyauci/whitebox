@@ -193,6 +193,7 @@ export class Effect {
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
     const previous = this.#context.activeEffect;
+    this.#deps.clear();
     this.#context.activeEffect = this;
 
     try {

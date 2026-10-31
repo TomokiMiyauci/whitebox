@@ -1,4 +1,4 @@
-import { State, ReactiveContext, Signal } from "./reactive.ts";
+import { Effect, State, ReactiveContext, Signal } from "./reactive.ts";
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 describe("State", () => {
@@ -107,5 +107,32 @@ describe("Signal", () => {
 
     signal.set(1);
     expect(stub).not.toHaveBeenCalled();
+  });
+});
+
+describe("Effect", () => {
+  it("should update dependencies when it reruns", () => {
+    const scheduled: VoidFunction[] = [];
+    const context = new ReactiveContext((action) => scheduled.push(action));
+    const useFirst = new Signal(context, true);
+    const first = new Signal(context, 1);
+    const second = new Signal(context, 2);
+    const effect = new Effect(context, () => {
+      if (useFirst.get) {
+        first.get;
+      } else {
+        second.get;
+      }
+    });
+
+    effect.run();
+    useFirst.set(false);
+    scheduled.shift()?.();
+
+    first.set(3);
+    expect(scheduled).toHaveLength(0);
+
+    second.set(4);
+    expect(scheduled).toHaveLength(1);
   });
 });
