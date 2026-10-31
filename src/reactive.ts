@@ -27,15 +27,12 @@ export class ReactiveContext {
 
 export class State<T> implements Equality<T> {
   #current: T;
-  #context: ReactiveContext;
 
-  constructor(context: ReactiveContext, current: T) {
+  constructor(current: T) {
     this.#current = current;
-    this.#context = context;
   }
 
   get get(): T {
-    this.#context.track(this);
     return this.#current;
   }
 
@@ -45,13 +42,36 @@ export class State<T> implements Equality<T> {
     }
 
     this.#current = value;
-    this.#context.notifyChange(this);
 
     return true;
   }
 
   equals(left: T, right: T): boolean {
     return Object.is(left, right);
+  }
+}
+
+export class Signal<T> extends State<T> {
+  #context: ReactiveContext;
+  constructor(context: ReactiveContext, current: T) {
+    super(current);
+
+    this.#context = context;
+  }
+
+  override set(value: T): boolean {
+    const changed = super.set(value);
+
+    if (changed) {
+      this.#context.notifyChange(this);
+    }
+
+    return changed;
+  }
+
+  override get get(): T {
+    this.#context.track(this);
+    return super.get;
   }
 }
 
@@ -92,12 +112,12 @@ export class Effect {
 }
 
 export interface ReactiveSystem {
-  State: StateConstructor;
+  Signal: SignalConstructor;
   Effect: EffectConstructor;
 }
 
-export interface StateConstructor {
-  new <T>(init: T): State<T>;
+export interface SignalConstructor {
+  new <T>(init: T): Signal<T>;
 }
 
 export interface EffectConstructor {
@@ -110,7 +130,7 @@ export function createReactiveSystem(
   const context = new ReactiveContext(onChange);
 
   return {
-    State: State.bind(null, context) as StateConstructor,
+    Signal: Signal.bind(null, context) as SignalConstructor,
     Effect: Effect.bind(null, context),
   };
 }

@@ -1,4 +1,4 @@
-import { Effect, State } from "./global.ts";
+import { Effect, Signal } from "./global.ts";
 
 /**
  * Marks a class field as reactive.
@@ -21,22 +21,22 @@ export function reactive<T>(
 
   return {
     get() {
-      const state: InstanceType<typeof State<T>> = Reflect.get(this, key);
+      const signal: InstanceType<typeof Signal<T>> = Reflect.get(this, key);
 
       target.get?.call(this);
-      return state.get;
+      return signal.get;
     },
 
     set(value) {
-      const state: InstanceType<typeof State<T>> = Reflect.get(this, key);
+      const signal: InstanceType<typeof Signal<T>> = Reflect.get(this, key);
 
       target.set?.call(this, value);
 
-      state.set(value);
+      signal.set(value);
     },
 
     init(value) {
-      Reflect.set(this, key, new State(value));
+      Reflect.set(this, key, new Signal(value));
       return value;
     },
   };
