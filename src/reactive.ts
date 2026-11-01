@@ -10,24 +10,43 @@ interface Equality<T> {
   equals(left: T, right: T): boolean;
 }
 
-/** Tracks reactive effects and schedules them when their dependencies change. */
-export class ReactiveContext {
+/** Defines the event types emitted by a reactive context. */
+interface EventMap {
+  /** Dispatched when a reactive effect is invalidated. */
+  invalidate: CustomEvent<VoidFunction>;
+}
+
+/** A reactive context with strongly typed event listeners. */
+export interface ReactiveContext extends EventTarget {
+  addEventListener<K extends keyof EventMap>(
+    type: K,
+    listener: (ev: EventMap[K]) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener<K extends keyof EventMap>(
+    type: K,
+    listener: (ev: EventMap[K]) => any,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ): void;
+}
+
+/** Tracks reactive dependencies and dispatches events when effects are invalidated. */
+export class ReactiveContext extends EventTarget {
+  /** The graph connecting reactive dependencies to their effects. */
   readonly #graph = new Graph<WeakKey, Effect>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
-
-  /** Schedules an effect action after one of its dependencies changes. */
-  #onChange: (action: VoidFunction) => void;
-
-  /**
-   * Creates a reactive context.
-   *
-   * @param onChange Schedules the supplied action for execution.
-   */
-  constructor(onChange: (action: VoidFunction) => void) {
-    this.#onChange = onChange;
-  }
 
   /**
    * Runs a function while collecting its dependency keys.
@@ -60,7 +79,6 @@ export class ReactiveContext {
    * Updates the effects subscribed to a dependency set.
    *
    * @param effect The effect whose dependencies changed.
-   * @param previous The effect's previous dependency keys.
    * @param next The effect's new dependency keys.
    */
   updateDependencies(effect: Effect, next: ReadonlySet<WeakKey>): void {
@@ -80,13 +98,15 @@ export class ReactiveContext {
   }
 
   /**
-   * Schedules effects that depend on the given reactive value.
+   * Notifies observers about effects that depend on the given reactive value.
    *
    * @param ref The reactive value that changed.
    */
   notifyChange(ref: WeakKey): void {
     for (const effect of this.#graph.get(ref)) {
-      this.#onChange(effect.scheduledRun);
+      this.dispatchEvent(
+        new CustomEvent("invalidate", { detail: effect.scheduledRun }),
+      );
     }
   }
 }
@@ -186,7 +206,10 @@ export class Signal<T> extends State<T> {
  * Stores edges from {@link T} to {@link U} and supports lookups in both directions.
  */
 export class Graph<T extends WeakKey, U extends WeakKey> {
+  /** The forward adjacency map from source nodes to target nodes. */
   #forward = new WeakMap<T, Set<U>>();
+
+  /** The reverse adjacency map from target nodes to source nodes. */
   #reverse = new WeakMap<U, Set<T>>();
 
   /**
@@ -278,6 +301,39 @@ export class Effect {
   }
 }
 
+/** Subscribes to invalidation events from a reactive context. */
+export class Observer {
+  /** The reactive context observed by this observer. */
+  #context: ReactiveContext;
+
+  /**
+   * Creates an observer for a reactive context.
+   *
+   * @param context The context to observe.
+   */
+  constructor(context: ReactiveContext) {
+    this.#context = context;
+  }
+
+  /**
+   * Subscribes to effect invalidation notifications.
+   *
+   * @param fn The callback invoked with the invalidated effect's reaction.
+   * @returns A function that removes the event listener.
+   */
+  observe(fn: (action: VoidFunction) => void): VoidFunction {
+    function handle(ev: CustomEvent<VoidFunction>): void {
+      fn(ev.detail);
+    }
+
+    this.#context.addEventListener("invalidate", handle);
+
+    return () => {
+      this.#context.removeEventListener("invalidate", handle);
+    };
+  }
+}
+
 /** The constructors exposed by a context-bound reactive system. */
 export interface ReactiveSystem {
   /** Constructs signals that use the system's reactive context. */
@@ -285,6 +341,9 @@ export interface ReactiveSystem {
 
   /** Constructs effects that use the system's reactive context. */
   Effect: EffectConstructor;
+
+  /** Constructs observers that use the system's reactive context. */
+  Observer: ObserverConstructor;
 }
 
 /** Constructor type for signals bound to a reactive context. */
@@ -292,7 +351,7 @@ export interface SignalConstructor {
   /**
    * Creates a signal with an initial value.
    *
-   * @param init The signal's initial value.
+   * @param init The initial value.
    */
   new <T>(init: T): Signal<T>;
 }
@@ -307,19 +366,22 @@ export interface EffectConstructor {
   new (fn: VoidFunction): Effect;
 }
 
+/** Constructor type for observers bound to a reactive context. */
+export interface ObserverConstructor {
+  new (): Observer;
+}
+
 /**
- * Creates signal and effect constructors that share a reactive context.
+ * Creates signal, effect, and observer constructors that share a reactive context.
  *
- * @param onChange Schedules effect actions when their dependencies change.
  * @returns Constructors bound to the created reactive context.
  */
-export function createReactiveSystem(
-  onChange: (action: VoidFunction) => void,
-): ReactiveSystem {
-  const context = new ReactiveContext(onChange);
+export function createReactiveSystem(): ReactiveSystem {
+  const context = new ReactiveContext();
 
   return {
     Signal: Signal.bind(null, context) as SignalConstructor,
     Effect: Effect.bind(null, context),
+    Observer: Observer.bind(null, context),
   };
 }

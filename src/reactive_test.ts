@@ -1,5 +1,22 @@
-import { Effect, State, ReactiveContext, Signal, Graph } from "./reactive.ts";
+import {
+  Effect,
+  State,
+  ReactiveContext,
+  Signal,
+  Graph,
+  Observer,
+} from "./reactive.ts";
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+
+function observe(context: ReactiveContext): VoidFunction[] {
+  const scheduled: VoidFunction[] = [];
+
+  context.addEventListener("invalidate", (event) => {
+    scheduled.push(event.detail);
+  });
+
+  return scheduled;
+}
 
 describe("State", () => {
   it("should not update when values are equal", function () {
@@ -37,11 +54,9 @@ describe("State", () => {
     const state = new CustomState({ id: 1, name: "Alice" });
 
     expect(state.set({ id: 1, name: "Bob" })).toBe(false);
-
     expect(state.get).toEqual({ id: 1, name: "Alice" });
 
     expect(state.set({ id: 2, name: "Bob" })).toBe(true);
-
     expect(state.get).toEqual({ id: 2, name: "Bob" });
   });
 });
@@ -49,11 +64,11 @@ describe("State", () => {
 describe("Signal", () => {
   let context: ReactiveContext;
 
-  beforeEach(function () {
-    context = new ReactiveContext(() => {});
+  beforeEach(() => {
+    context = new ReactiveContext();
   });
 
-  it("should not update when values are equal", function () {
+  it("should not update when values are equal", () => {
     const signal = new Signal(context, 1);
 
     expect(signal.set(1)).toBe(false);
@@ -80,7 +95,6 @@ describe("Signal", () => {
 
   it("should track dependencies when read", () => {
     const stub = mock();
-    const context = new ReactiveContext(stub);
     context.track = stub;
 
     const signal = new Signal(context, 1);
@@ -91,32 +105,34 @@ describe("Signal", () => {
 
   it("should notify changes when updated", () => {
     const stub = mock();
-    const context = new ReactiveContext(stub);
     context.notifyChange = stub;
+
     const signal = new Signal(context, 1);
 
     signal.set(0);
+
     expect(stub).toHaveBeenCalledTimes(1);
   });
 
   it("should not notify changes when setting the same value", () => {
     const stub = mock();
-
-    const context = new ReactiveContext(stub);
     context.notifyChange = stub;
+
     const signal = new Signal(context, 1);
 
     signal.set(1);
+
     expect(stub).not.toHaveBeenCalled();
   });
 });
 
 describe("Effect", () => {
   it("should subscribe after running", () => {
-    const scheduled: VoidFunction[] = [];
-    const context = new ReactiveContext((action) => scheduled.push(action));
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
     const signal = new Signal(context, 1);
     let runs = 0;
+
     const effect = new Effect(context, () => {
       runs++;
       signal.get;
@@ -127,12 +143,13 @@ describe("Effect", () => {
 
     effect.run();
     signal.set(3);
+
     expect(scheduled).toHaveLength(1);
     expect(runs).toBe(1);
   });
 
   it("should capture dependency keys read during execution", () => {
-    const context = new ReactiveContext(() => {});
+    const context = new ReactiveContext();
     const dependency = {};
     const signal = new Signal(context, 1);
 
@@ -146,11 +163,12 @@ describe("Effect", () => {
   });
 
   it("should update dependencies when it reruns", () => {
-    const scheduled: VoidFunction[] = [];
-    const context = new ReactiveContext((action) => scheduled.push(action));
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
     const useFirst = new Signal(context, true);
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
+
     const effect = new Effect(context, () => {
       if (useFirst.get) {
         first.get;
@@ -160,6 +178,7 @@ describe("Effect", () => {
     });
 
     effect.run();
+
     useFirst.set(false);
     scheduled.shift()?.();
 
@@ -171,8 +190,8 @@ describe("Effect", () => {
   });
 
   it("should support multiple effects depending on the same signal", () => {
-    const scheduled: VoidFunction[] = [];
-    const context = new ReactiveContext((action) => scheduled.push(action));
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
     const signal = new Signal(context, 1);
 
     const first = new Effect(context, () => signal.get);
@@ -187,8 +206,8 @@ describe("Effect", () => {
   });
 
   it("should support multiple dependencies for the same effect", () => {
-    const scheduled: VoidFunction[] = [];
-    const context = new ReactiveContext((action) => scheduled.push(action));
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
 
@@ -206,8 +225,8 @@ describe("Effect", () => {
   });
 
   it("should remove dependencies that are no longer used", () => {
-    const scheduled: VoidFunction[] = [];
-    const context = new ReactiveContext((action) => scheduled.push(action));
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
     const condition = new Signal(context, true);
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
@@ -229,6 +248,31 @@ describe("Effect", () => {
     expect(scheduled).toHaveLength(0);
 
     second.set(4);
+    expect(scheduled).toHaveLength(1);
+  });
+});
+
+describe("Observer", () => {
+  it("should observe invalidated effects", () => {
+    const context = new ReactiveContext();
+    const observer = new Observer(context);
+    const scheduled: VoidFunction[] = [];
+
+    const dispose = observer.observe((action) => {
+      scheduled.push(action);
+    });
+
+    const signal = new Signal(context, 1);
+    const effect = new Effect(context, () => signal.get);
+
+    effect.run();
+    signal.set(2);
+
+    expect(scheduled).toHaveLength(1);
+
+    dispose();
+    signal.set(3);
+
     expect(scheduled).toHaveLength(1);
   });
 });
