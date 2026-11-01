@@ -180,10 +180,21 @@ export class Signal<T> extends State<T> {
   }
 }
 
+/**
+ * A directed graph that maintains relationships between two types of nodes.
+ *
+ * Stores edges from {@link T} to {@link U} and supports lookups in both directions.
+ */
 export class Graph<T extends WeakKey, U extends WeakKey> {
   #forward = new WeakMap<T, Set<U>>();
   #reverse = new WeakMap<U, Set<T>>();
 
+  /**
+   * Adds a directed edge from {@link from} to {@link to}.
+   *
+   * @param from The source node.
+   * @param to The target node.
+   */
   add(from: T, to: U): void {
     let targets = this.#forward.get(from);
     if (!targets) {
@@ -201,6 +212,12 @@ export class Graph<T extends WeakKey, U extends WeakKey> {
     sources.add(from);
   }
 
+  /**
+   * Removes the directed edge from {@link from} to {@link to}.
+   *
+   * @param from The source node.
+   * @param to The target node.
+   */
   delete(from: T, to: U): void {
     const targets = this.#forward.get(from);
     const sources = this.#reverse.get(to);
@@ -209,10 +226,22 @@ export class Graph<T extends WeakKey, U extends WeakKey> {
     sources?.delete(from);
   }
 
+  /**
+   * Returns the target nodes connected from the given source node.
+   *
+   * @param from The source node.
+   * @returns The set of target nodes connected from {@link from}.
+   */
   get(from: T): ReadonlySet<U> {
     return this.#forward.get(from) ?? new Set();
   }
 
+  /**
+   * Returns the source nodes connected to the given target node.
+   *
+   * @param to The target node.
+   * @returns The set of source nodes connected to {@link to}.
+   */
   getReverse(to: U): ReadonlySet<T> {
     return this.#reverse.get(to) ?? new Set();
   }
