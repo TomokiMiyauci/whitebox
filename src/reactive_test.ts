@@ -250,6 +250,92 @@ describe("Effect", () => {
     second.set(4);
     expect(scheduled).toHaveLength(1);
   });
+
+  it("should stop before running", () => {
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
+    const signal = new Signal(context, 1);
+    const stub = mock();
+
+    const effect = new Effect(context, () => {
+      stub();
+      signal.get;
+    });
+
+    effect.stop();
+    effect.run();
+    signal.set(2);
+
+    expect(stub).not.toHaveBeenCalled();
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it("should remove dependencies when stopped", () => {
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
+    const signal = new Signal(context, 1);
+    const effect = new Effect(context, () => signal.get);
+
+    effect.run();
+    effect.stop();
+    signal.set(2);
+
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it("should not run after stopping", () => {
+    const context = new ReactiveContext();
+    const signal = new Signal(context, 1);
+    const stub = mock();
+
+    const effect = new Effect(context, () => {
+      stub();
+      signal.get;
+    });
+
+    effect.run();
+    effect.stop();
+    effect.run();
+
+    expect(stub).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not execute scheduled actions after stopping", () => {
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
+    const signal = new Signal(context, 1);
+    const stub = mock();
+
+    const effect = new Effect(context, () => {
+      stub();
+      signal.get;
+    });
+
+    effect.run();
+    signal.set(2);
+
+    expect(scheduled).toHaveLength(1);
+
+    effect.stop();
+    scheduled.shift()?.();
+
+    expect(stub).toHaveBeenCalledTimes(1);
+  });
+
+  it("should allow stopping multiple times", () => {
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
+    const signal = new Signal(context, 1);
+    const effect = new Effect(context, () => signal.get);
+
+    effect.run();
+    effect.stop();
+    effect.stop();
+
+    signal.set(2);
+
+    expect(scheduled).toHaveLength(0);
+  });
 });
 
 describe("Observer", () => {

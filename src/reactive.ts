@@ -278,6 +278,9 @@ export class Effect {
   /** The context that tracks this effect and its dependencies. */
   #context: ReactiveContext;
 
+  /** Whether this effect has been stopped. */
+  #stopped = false;
+
   /**
    * Creates an effect in a reactive context.
    *
@@ -291,8 +294,21 @@ export class Effect {
 
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
+    if (this.#stopped) return;
+
     const { dependencies } = this.#context.capture(this.#fn);
-    this.#context.updateDependencies(this, dependencies);
+
+    if (!this.#stopped) {
+      this.#context.updateDependencies(this, dependencies);
+    }
+  }
+
+  /** Stops the effect and removes its dependencies. */
+  stop(): void {
+    if (this.#stopped) return;
+
+    this.#stopped = true;
+    this.#context.updateDependencies(this, new Set());
   }
 }
 
