@@ -20,7 +20,7 @@ interface EventMap {
 export interface ReactiveContext extends EventTarget {
   addEventListener<K extends keyof EventMap>(
     type: K,
-    listener: (ev: EventMap[K]) => any,
+    listener: (ev: EventMap[K]) => void,
     options?: boolean | AddEventListenerOptions,
   ): void;
   addEventListener(
@@ -30,7 +30,7 @@ export interface ReactiveContext extends EventTarget {
   ): void;
   removeEventListener<K extends keyof EventMap>(
     type: K,
-    listener: (ev: EventMap[K]) => any,
+    listener: (ev: EventMap[K]) => void,
     options?: boolean | EventListenerOptions,
   ): void;
   removeEventListener(
@@ -105,7 +105,7 @@ export class ReactiveContext extends EventTarget {
   notifyChange(ref: WeakKey): void {
     for (const effect of this.#graph.get(ref)) {
       this.dispatchEvent(
-        new CustomEvent("invalidate", { detail: effect.scheduledRun }),
+        new CustomEvent("invalidate", { detail: () => effect.run() }),
       );
     }
   }
@@ -288,11 +288,6 @@ export class Effect {
     this.#fn = fn;
     this.#context = context;
   }
-
-  /** An action that runs this effect; suitable for passing to a scheduler. */
-  readonly scheduledRun: VoidFunction = () => {
-    this.run();
-  };
 
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
