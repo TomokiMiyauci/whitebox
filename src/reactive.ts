@@ -12,8 +12,7 @@ interface Equality<T> {
 
 /** Tracks reactive effects and schedules them when their dependencies change. */
 export class ReactiveContext {
-  /** Effects subscribed to each dependency key. */
-  readonly #subscribers = new WeakMap<WeakKey, Set<Effect>>();
+  readonly #graph = new Graph<WeakKey, Effect>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
@@ -64,32 +63,19 @@ export class ReactiveContext {
    * @param previous The effect's previous dependency keys.
    * @param next The effect's new dependency keys.
    */
-  updateDependencies(
-    effect: Effect,
-    previous: ReadonlySet<WeakKey>,
-    next: ReadonlySet<WeakKey>,
-  ): void {
+  updateDependencies(effect: Effect, next: ReadonlySet<WeakKey>): void {
+    const previous = this.#graph.getReverse(effect);
+
     for (const ref of previous) {
-      if (next.has(ref)) continue;
-
-      const subscribers = this.#subscribers.get(ref);
-      subscribers?.delete(effect);
-
-      if (subscribers?.size === 0) {
-        this.#subscribers.delete(ref);
+      if (!next.has(ref)) {
+        this.#graph.delete(ref, effect);
       }
     }
 
     for (const ref of next) {
-      if (previous.has(ref)) continue;
-
-      let subscribers = this.#subscribers.get(ref);
-      if (!subscribers) {
-        subscribers = new Set();
-        this.#subscribers.set(ref, subscribers);
+      if (!previous.has(ref)) {
+        this.#graph.add(ref, effect);
       }
-
-      subscribers.add(effect);
     }
   }
 
@@ -99,10 +85,7 @@ export class ReactiveContext {
    * @param ref The reactive value that changed.
    */
   notifyChange(ref: WeakKey): void {
-    const subscribers = this.#subscribers.get(ref);
-    if (!subscribers) return;
-
-    for (const effect of subscribers) {
+    for (const effect of this.#graph.get(ref)) {
       this.#onChange(effect.scheduledRun);
     }
   }
@@ -197,11 +180,46 @@ export class Signal<T> extends State<T> {
   }
 }
 
+export class Graph<T extends WeakKey, U extends WeakKey> {
+  #forward = new WeakMap<T, Set<U>>();
+  #reverse = new WeakMap<U, Set<T>>();
+
+  add(from: T, to: U): void {
+    let targets = this.#forward.get(from);
+    if (!targets) {
+      targets = new Set();
+      this.#forward.set(from, targets);
+    }
+
+    let sources = this.#reverse.get(to);
+    if (!sources) {
+      sources = new Set();
+      this.#reverse.set(to, sources);
+    }
+
+    targets.add(to);
+    sources.add(from);
+  }
+
+  delete(from: T, to: U): void {
+    const targets = this.#forward.get(from);
+    const sources = this.#reverse.get(to);
+
+    targets?.delete(to);
+    sources?.delete(from);
+  }
+
+  get(from: T): ReadonlySet<U> {
+    return this.#forward.get(from) ?? new Set();
+  }
+
+  getReverse(to: U): ReadonlySet<T> {
+    return this.#reverse.get(to) ?? new Set();
+  }
+}
+
 /** Runs a function and tracks the signals read while it is running. */
 export class Effect {
-  /** Reactive values read by this effect. */
-  #deps = new Set<WeakKey>();
-
   /** The function executed by this effect. */
   #fn: VoidFunction;
 
@@ -226,11 +244,8 @@ export class Effect {
 
   /** Executes the effect while collecting its signal dependencies. */
   run(): void {
-    const prevDeps = this.#deps;
     const { dependencies } = this.#context.capture(this.#fn);
-
-    this.#context.updateDependencies(this, prevDeps, dependencies);
-    this.#deps = dependencies;
+    this.#context.updateDependencies(this, dependencies);
   }
 }
 
