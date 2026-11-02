@@ -14,5 +14,11 @@
     "editor.detectIndentation": false,
     "editor.tabSize": 2
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "json.schemas": [
+    {
+      "fileMatch": ["jsr.json"],
+      "url": "https://jsr.io/schema/config-file.v1.json"
+    }
+  ]
 }
