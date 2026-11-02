@@ -1,6 +1,6 @@
 # whitebox
 
-Declarative, reactive Web Components.
+Declarative Web Components.
 
 ## Features
 
