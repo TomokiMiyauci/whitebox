@@ -1,0 +1,13 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple"
+    }
+  },
+  "bump-minor-pre-major": true,
+  "initial-version": "0.1.0",
+  "pull-request-title-pattern": "chore: release${component} ${version}",
+  "extra-files": [
+    { "type": "json", "path": "jsr.json", "jsonpath": "$.version" }
+  ]
+}
