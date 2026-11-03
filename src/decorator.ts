@@ -164,3 +164,22 @@ export function style(
     };
   };
 }
+
+/**
+ * Attaches an open Shadow DOM to the custom element.
+ *
+ * @returns A class decorator that ensures the element has a shadow root.
+ */
+export function shadowHost<T extends new (...args: any) => HTMLElement>(
+  value: T,
+): T {
+  return class extends value {
+    constructor(...args: any) {
+      super(...args);
+
+      if (!this.shadowRoot) {
+        this.attachShadow({ mode: "open" });
+      }
+    }
+  };
+}

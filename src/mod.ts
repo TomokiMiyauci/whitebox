@@ -41,4 +41,11 @@
  * @module
  */
 
-export { attr, effect, reactive, customElement, style } from "./decorator.ts";
+export {
+  attr,
+  effect,
+  reactive,
+  customElement,
+  style,
+  shadowHost,
+} from "./decorator.ts";
