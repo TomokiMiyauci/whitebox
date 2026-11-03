@@ -60,7 +60,7 @@ export function reactive<T>(
  * }
  * ```
  */
-export function effect<C extends Constructor>(
+export function effect<C extends new (...args: any) => any>(
   action: (instance: InstanceType<C>) => void,
 ): (value: C) => C {
   return (value) => {
@@ -77,9 +77,6 @@ export function effect<C extends Constructor>(
     };
   };
 }
-
-/** Constructor type used to infer the instance passed to an effect action. */
-type Constructor = new (...args: any) => any;
 
 /**
  * Reflects a class accessor to an HTML attribute on an element.
@@ -124,15 +121,6 @@ export function attr(
   };
 }
 
-/** Type of a class decorator that does not replace the decorated class. */
-interface ClassDecorator<
-  Class extends abstract new (...args: unknown[]) => unknown = abstract new (
-    ...args: unknown[]
-  ) => unknown,
-> {
-  (value: Class, context: ClassDecoratorContext<Class>): void;
-}
-
 /**
  * Registers a class with the browser's custom element registry.
  *
@@ -141,7 +129,10 @@ interface ClassDecorator<
  */
 export function customElement(
   name: string,
-): ClassDecorator<CustomElementConstructor> {
+): <T extends CustomElementConstructor>(
+  value: T,
+  context: ClassDecoratorContext<T>,
+) => void {
   return (_, context) => {
     context.addInitializer(function (): void {
       customElements.define(name, this);
