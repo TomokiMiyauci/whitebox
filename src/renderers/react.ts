@@ -8,15 +8,16 @@ import { Effect } from "../global.ts";
  * @param fn Creates the React node from the custom element instance.
  * @returns A class decorator that rerenders when reactive dependencies change.
  */
-export function template<T extends new (...args: any[]) => HTMLElement>(
+export function template<T extends new (...args: any) => HTMLElement>(
   fn: (props: InstanceType<T>) => ReactNode,
 ): (constructor: T) => T {
   return (constructor) => {
     return class extends constructor {
-      constructor(...args: any[]) {
+      constructor(...args: any) {
         super(...args);
 
-        const root = createRoot(this.shadowRoot ? this.shadowRoot : this);
+        const host = this.shadowRoot ?? this;
+        const root = createRoot(host);
 
         const bound = () => {
           const node = fn(this as InstanceType<T>);
