@@ -49,3 +49,4 @@ export {
   style,
   shadowHost,
 } from "./decorator.ts";
+export { Effect } from "./global.ts";
