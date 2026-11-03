@@ -1,4 +1,5 @@
 {
   "name": "@whitebox/core",
-  "exports": "./src/mod.ts"
+  "exports": "./src/mod.ts",
+  "version": ""
 }
