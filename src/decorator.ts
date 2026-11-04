@@ -1,4 +1,5 @@
 import { Effect, Signal } from "./global.ts";
+import type { RegisterCleanup } from "./reactive_system/reactive.ts";
 
 /**
  * Makes a class accessor reactive.
@@ -53,7 +54,9 @@ export function reactive<T>(
  * @returns A class decorator that runs and tracks the action.
  * @example
  * ```ts
- * @effect((instance) => console.log(instance.count))
+ * @effect(function (onCleanup) {
+ *   this.count
+ * })
  * class Counter {
  *   @reactive
  *   accessor count = 0;
@@ -61,18 +64,17 @@ export function reactive<T>(
  * ```
  */
 export function effect<C extends new (...args: any) => any>(
-  action: (instance: InstanceType<C>) => void,
+  action: (this: InstanceType<C>, onCleanup: RegisterCleanup) => void,
 ): (value: C) => C {
   return (value) => {
     return class extends value {
       constructor(...args: any) {
         super(...args);
 
-        const bound = () => action(this as InstanceType<C>);
+        const bound = (onCleanup: RegisterCleanup) =>
+          action.call(this as InstanceType<C>, onCleanup);
 
-        const effect = new Effect(bound);
-
-        effect.run();
+        new Effect(bound);
       }
     };
   };

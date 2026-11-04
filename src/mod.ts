@@ -49,4 +49,8 @@ export {
   style,
   shadowHost,
 } from "./decorator.ts";
-export { Effect } from "./global.ts";
+export { Effect, Signal } from "./global.ts";
+export {
+  type Action,
+  type RegisterCleanup,
+} from "./reactive_system/reactive.ts";

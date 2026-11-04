@@ -1,20 +1,9 @@
 import { BiMultiMap } from "./collection.ts";
-
-/** Defines how two values are compared for equality. */
-interface Equality<T> {
-  /**
-   * Determines whether two values are considered equal.
-   *
-   * @param left The first value to compare.
-   * @param right The second value to compare.
-   * @returns `true` when the values are equal.
-   */
-  equals(left: T, right: T): boolean;
-}
+import { State } from "./state.ts";
 
 /** Defines the event types emitted by a reactive context. */
 interface EventMap {
-  /** Dispatched when a reactive effect is invalidated. */
+  /** Dispatched when a dependency invalidates a reactive action. */
   invalidate: CustomEvent<VoidFunction>;
 }
 
@@ -42,10 +31,10 @@ export interface ReactiveContext extends EventTarget {
   ): void;
 }
 
-/** Tracks reactive dependencies and dispatches events when effects are invalidated. */
+/** Tracks reactive dependencies and dispatches events when actions are invalidated. */
 export class ReactiveContext extends EventTarget {
-  /** The map connecting reactive dependencies to their effects. */
-  readonly #map = new BiMultiMap<WeakKey, Effect>();
+  /** Maps reactive dependencies to the actions that depend on them. */
+  readonly #map = new BiMultiMap<WeakKey, VoidFunction>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
@@ -53,7 +42,7 @@ export class ReactiveContext extends EventTarget {
   /**
    * Runs a function while collecting its dependency keys.
    *
-   * @param fn The function to run.
+   * @param fn The function to execute.
    * @returns The function result and the dependency keys read during execution.
    */
   capture<T>(fn: () => T): { value: T; dependencies: Set<WeakKey> } {
@@ -69,108 +58,57 @@ export class ReactiveContext extends EventTarget {
   }
 
   /**
-   * Records a dependency on the currently active effect.
+   * Records a dependency for the current capture operation.
    *
-   * @param ref The reactive value being read.
+   * @param ref The reactive value being tracked.
    */
   track(ref: WeakKey): void {
     this.#activeDependencies?.add(ref);
   }
 
   /**
-   * Updates the effects subscribed to a dependency set.
+   * Updates the dependencies associated with an action.
    *
-   * @param effect The effect whose dependencies changed.
-   * @param next The effect's new dependency keys.
+   * @param callback The action whose dependencies are being updated.
+   * @param next The action's new dependency keys.
    */
-  updateDependencies(effect: Effect, next: ReadonlySet<WeakKey>): void {
-    const previous = this.#map.getReverse(effect);
+  updateDependencies(callback: VoidFunction, next: ReadonlySet<WeakKey>): void {
+    const previous = this.#map.getReverse(callback);
 
     for (const ref of previous) {
       if (!next.has(ref)) {
-        this.#map.delete(ref, effect);
+        this.#map.delete(ref, callback);
       }
     }
 
     for (const ref of next) {
       if (!previous.has(ref)) {
-        this.#map.add(ref, effect);
+        this.#map.add(ref, callback);
       }
     }
   }
 
   /**
-   * Notifies observers about effects that depend on the given reactive value.
+   * Dispatches invalidation events for actions that depend on the given value.
    *
    * @param ref The reactive value that changed.
    */
-  notifyChange(ref: WeakKey): void {
+  trigger(ref: WeakKey): void {
     for (const effect of this.#map.get(ref)) {
-      this.dispatchEvent(
-        new CustomEvent("invalidate", { detail: () => effect.run() }),
-      );
+      this.dispatchEvent(new CustomEvent("invalidate", { detail: effect }));
     }
   }
 }
 
-/** Stores a value and provides a customizable equality check for updates. */
-export class State<T> implements Equality<T> {
-  /** The value currently stored by this state. */
-  #current: T;
-
-  /**
-   * Creates a state with an initial value.
-   *
-   * @param current The initial value.
-   */
-  constructor(current: T) {
-    this.#current = current;
-  }
-
-  /** Gets the current value. */
-  get get(): T {
-    return this.#current;
-  }
-
-  /**
-   * Updates the value if it is not equal to the current value.
-   *
-   * @param value The value to store.
-   * @returns `true` if the value changed; otherwise, `false`.
-   */
-  set(value: T): boolean {
-    if (this.equals(this.#current, value)) {
-      return false;
-    }
-
-    this.#current = value;
-
-    return true;
-  }
-
-  /**
-   * Compares values using `Object.is`.
-   *
-   * Override this method to customize the equality check.
-   *
-   * @param left The current value.
-   * @param right The proposed value.
-   * @returns `true` if the values are equal.
-   */
-  equals(left: T, right: T): boolean {
-    return Object.is(left, right);
-  }
-}
-
-/** A state that tracks reads and notifies effects when its value changes. */
+/** A state that tracks reads and notifies dependent actions when its value changes. */
 export class Signal<T> extends State<T> {
-  /** The context used to track reads and notify dependent effects. */
+  /** The context used to track reads and notify dependent actions. */
   #context: ReactiveContext;
 
   /**
    * Creates a signal in a reactive context.
    *
-   * @param context The context that manages dependent effects.
+   * @param context The context that manages dependencies.
    * @param current The initial value.
    */
   constructor(context: ReactiveContext, current: T) {
@@ -180,7 +118,7 @@ export class Signal<T> extends State<T> {
   }
 
   /**
-   * Updates the signal and notifies dependent effects when it changes.
+   * Updates the signal and notifies dependent actions when its value changes.
    *
    * @param value The value to store.
    * @returns `true` if the value changed; otherwise, `false`.
@@ -189,7 +127,7 @@ export class Signal<T> extends State<T> {
     const changed = super.set(value);
 
     if (changed) {
-      this.#context.notifyChange(this);
+      this.#context.trigger(this);
     }
 
     return changed;
@@ -202,45 +140,90 @@ export class Signal<T> extends State<T> {
   }
 }
 
-/** Runs a function and tracks the signals read while it is running. */
-export class Effect {
-  /** The function executed by this effect. */
-  #fn: VoidFunction;
+/**
+ * A function executed by an effect.
+ */
+export interface Action {
+  /**
+   * @param onCleanup Registers a callback to run before the next execution or when the effect stops.
+   */
+  (onCleanup: RegisterCleanup): void;
+}
 
+/** Registers a cleanup callback for an effect. */
+export interface RegisterCleanup {
+  /**
+   * Registers a callback to clean up resources created during an action execution.
+   *
+   * @param callback The cleanup callback to execute before the next action execution or when the effect stops.
+   */
+  (callback: VoidFunction): void;
+}
+
+/** Manages the execution, dependencies, and cleanup of a reactive action. */
+export class Effect {
   /** The context that tracks this effect and its dependencies. */
   #context: ReactiveContext;
 
   /** Whether this effect has been stopped. */
   #stopped = false;
 
+  /** Executes the action while collecting its dependencies. */
+  #run: VoidFunction;
+
+  /** Cleanup callbacks registered by the current action execution. */
+  #cleanups: VoidFunction[] = [];
+
   /**
-   * Creates an effect in a reactive context.
+   * Creates and immediately executes an effect in a reactive context.
    *
-   * @param context The context that manages this effect.
-   * @param fn The function to execute and track.
+   * @param context The context that manages dependencies.
+   * @param action The action to execute and track.
    */
-  constructor(context: ReactiveContext, fn: VoidFunction) {
-    this.#fn = fn;
+  constructor(context: ReactiveContext, action: Action) {
+    const run = (): void => {
+      if (this.#stopped) return;
+
+      this.#cleanup();
+
+      const onCleanup = (callback: VoidFunction) => {
+        this.#cleanups.push(callback);
+      };
+
+      const callback = () => {
+        action(onCleanup);
+      };
+
+      const { dependencies } = context.capture(callback);
+      context.updateDependencies(run, dependencies);
+    };
+
     this.#context = context;
+    this.#run = run;
+
+    run();
   }
 
-  /** Executes the effect while collecting its signal dependencies. */
-  run(): void {
-    if (this.#stopped) return;
-
-    const { dependencies } = this.#context.capture(this.#fn);
-
-    if (!this.#stopped) {
-      this.#context.updateDependencies(this, dependencies);
+  /**
+   * Executes and clears the cleanup callbacks from the previous action execution.
+   */
+  #cleanup(): void {
+    for (const cleanup of this.#cleanups) {
+      cleanup();
     }
+    this.#cleanups = [];
   }
 
-  /** Stops the effect and removes its dependencies. */
+  /**
+   * Stops the effect, removes its dependencies, and executes remaining cleanup callbacks.
+   */
   stop(): void {
     if (this.#stopped) return;
 
     this.#stopped = true;
-    this.#context.updateDependencies(this, new Set());
+    this.#context.updateDependencies(this.#run, new Set());
+
+    this.#cleanup();
   }
 }
 
@@ -261,10 +244,10 @@ export class Observer {
   /**
    * Subscribes to effect invalidation notifications.
    *
-   * @param fn The callback invoked with the invalidated effect's reaction.
+   * @param fn The callback invoked with the invalidated action.
    * @returns A function that removes the event listener.
    */
-  observe(fn: (action: VoidFunction) => void): VoidFunction {
+  observe(fn: (callback: VoidFunction) => void): VoidFunction {
     function handle(ev: CustomEvent<VoidFunction>): void {
       fn(ev.detail);
     }
@@ -275,56 +258,4 @@ export class Observer {
       this.#context.removeEventListener("invalidate", handle);
     };
   }
-}
-
-/** The constructors exposed by a context-bound reactive system. */
-export interface ReactiveSystem {
-  /** Constructs signals that use the system's reactive context. */
-  Signal: SignalConstructor;
-
-  /** Constructs effects that use the system's reactive context. */
-  Effect: EffectConstructor;
-
-  /** Constructs observers that use the system's reactive context. */
-  Observer: ObserverConstructor;
-}
-
-/** Constructor type for signals bound to a reactive context. */
-export interface SignalConstructor {
-  /**
-   * Creates a signal with an initial value.
-   *
-   * @param init The initial value.
-   */
-  new <T>(init: T): Signal<T>;
-}
-
-/** Constructor type for effects bound to a reactive context. */
-export interface EffectConstructor {
-  /**
-   * Creates an effect with a function to execute.
-   *
-   * @param fn The function to execute and track.
-   */
-  new (fn: VoidFunction): Effect;
-}
-
-/** Constructor type for observers bound to a reactive context. */
-export interface ObserverConstructor {
-  new (): Observer;
-}
-
-/**
- * Creates signal, effect, and observer constructors that share a reactive context.
- *
- * @returns Constructors bound to the created reactive context.
- */
-export function createReactiveSystem(): ReactiveSystem {
-  const context = new ReactiveContext();
-
-  return {
-    Signal: Signal.bind(null, context) as SignalConstructor,
-    Effect: Effect.bind(null, context),
-    Observer: Observer.bind(null, context),
-  };
 }
