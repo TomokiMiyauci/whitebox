@@ -2,7 +2,7 @@ import {
   createReactiveSystem,
   type EffectConstructor,
   type SignalConstructor,
-} from "./reactive.ts";
+} from "./reactive_system/reactive.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
 
 /** Reactive system shared by the default `Effect` and `Signal` constructors. */
