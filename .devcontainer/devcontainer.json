@@ -3,11 +3,7 @@
   "image": "oven/bun",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "oven.bun-vscode",
-        "ritwickdey.liveserver",
-        "esbenp.prettier-vscode"
-      ]
+      "extensions": ["oven.bun-vscode", "esbenp.prettier-vscode"]
     }
   },
   "features": {
