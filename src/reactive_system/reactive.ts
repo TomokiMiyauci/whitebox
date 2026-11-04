@@ -152,6 +152,9 @@ export class Effect {
   /** Whether this effect has been stopped. */
   #stopped = false;
 
+  /** Executes the effect while collecting its signal dependencies. */
+  #run: () => void;
+
   /**
    * Creates an effect in a reactive context.
    *
@@ -162,26 +165,22 @@ export class Effect {
     const run = (): void => {
       if (this.#stopped) return;
 
-      const { dependencies } = this.#context.capture(action);
-
-      if (!this.#stopped) {
-        this.#context.updateDependencies(run, dependencies);
-      }
+      const { dependencies } = context.capture(action);
+      context.updateDependencies(run, dependencies);
     };
 
     this.#context = context;
-    this.run = run;
-  }
+    this.#run = run;
 
-  /** Executes the effect while collecting its signal dependencies. */
-  run: () => void;
+    run();
+  }
 
   /** Stops the effect and removes its dependencies. */
   stop(): void {
     if (this.#stopped) return;
 
     this.#stopped = true;
-    this.#context.updateDependencies(this.run, new Set());
+    this.#context.updateDependencies(this.#run, new Set());
   }
 }
 

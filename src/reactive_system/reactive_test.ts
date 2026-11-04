@@ -79,23 +79,21 @@ describe("Signal", () => {
 describe("Effect", () => {
   it("should subscribe after running", () => {
     const context = new ReactiveContext();
-    const scheduled = observe(context);
+    new Observer(context).observe((callback) => callback());
     const signal = new Signal(context, 1);
-    let runs = 0;
+    const stub = mock();
 
-    const effect = new Effect(context, () => {
-      runs++;
+    new Effect(context, () => {
+      stub();
       signal.get;
     });
 
-    signal.set(2);
-    expect(scheduled).toHaveLength(0);
+    expect(stub).toHaveBeenCalledOnce();
 
-    effect.run();
+    signal.set(2);
     signal.set(3);
 
-    expect(scheduled).toHaveLength(1);
-    expect(runs).toBe(1);
+    expect(stub).toHaveBeenCalledTimes(3);
   });
 
   it("should capture dependency keys read during execution", () => {
@@ -119,15 +117,13 @@ describe("Effect", () => {
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
 
-    const effect = new Effect(context, () => {
+    new Effect(context, () => {
       if (useFirst.get) {
         first.get;
       } else {
         second.get;
       }
     });
-
-    effect.run();
 
     useFirst.set(false);
     scheduled.shift()?.();
@@ -144,11 +140,8 @@ describe("Effect", () => {
     const scheduled = observe(context);
     const signal = new Signal(context, 1);
 
-    const first = new Effect(context, () => signal.get);
-    const second = new Effect(context, () => signal.get);
-
-    first.run();
-    second.run();
+    new Effect(context, () => signal.get);
+    new Effect(context, () => signal.get);
 
     signal.set(2);
 
@@ -161,12 +154,10 @@ describe("Effect", () => {
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
 
-    const effect = new Effect(context, () => {
+    new Effect(context, () => {
       first.get;
       second.get;
     });
-
-    effect.run();
 
     first.set(3);
     second.set(4);
@@ -181,15 +172,13 @@ describe("Effect", () => {
     const first = new Signal(context, 1);
     const second = new Signal(context, 2);
 
-    const effect = new Effect(context, () => {
+    new Effect(context, () => {
       if (condition.get) {
         first.get;
       } else {
         second.get;
       }
     });
-
-    effect.run();
 
     condition.set(false);
     scheduled.shift()?.();
@@ -203,7 +192,6 @@ describe("Effect", () => {
 
   it("should stop before running", () => {
     const context = new ReactiveContext();
-    const scheduled = observe(context);
     const signal = new Signal(context, 1);
     const stub = mock();
 
@@ -212,12 +200,12 @@ describe("Effect", () => {
       signal.get;
     });
 
+    expect(stub).toHaveBeenCalledOnce();
+
     effect.stop();
-    effect.run();
     signal.set(2);
 
-    expect(stub).not.toHaveBeenCalled();
-    expect(scheduled).toHaveLength(0);
+    expect(stub).toHaveBeenCalledTimes(1);
   });
 
   it("should remove dependencies when stopped", () => {
@@ -226,7 +214,6 @@ describe("Effect", () => {
     const signal = new Signal(context, 1);
     const effect = new Effect(context, () => signal.get);
 
-    effect.run();
     effect.stop();
     signal.set(2);
 
@@ -243,9 +230,7 @@ describe("Effect", () => {
       signal.get;
     });
 
-    effect.run();
     effect.stop();
-    effect.run();
 
     expect(stub).toHaveBeenCalledTimes(1);
   });
@@ -261,7 +246,6 @@ describe("Effect", () => {
       signal.get;
     });
 
-    effect.run();
     signal.set(2);
 
     expect(scheduled).toHaveLength(1);
@@ -278,7 +262,6 @@ describe("Effect", () => {
     const signal = new Signal(context, 1);
     const effect = new Effect(context, () => signal.get);
 
-    effect.run();
     effect.stop();
     effect.stop();
 
@@ -299,9 +282,8 @@ describe("Observer", () => {
     });
 
     const signal = new Signal(context, 1);
-    const effect = new Effect(context, () => signal.get);
+    new Effect(context, () => signal.get);
 
-    effect.run();
     signal.set(2);
 
     expect(scheduled).toHaveLength(1);
