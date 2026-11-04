@@ -29,7 +29,7 @@ describe("State", () => {
 
   it("should allow overriding equals", () => {
     class CustomState<T extends { id: unknown }> extends State<T> {
-      equals(left: T, right: T): boolean {
+      override equals(left: T, right: T): boolean {
         return left.id === right.id;
       }
     }
