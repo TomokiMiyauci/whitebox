@@ -46,7 +46,7 @@ import css from "./style.css" with { type: "css" };
   </button>
 ))
 @style(css)
-@effect((instance) => instance.log())
+@effect(funciton (onCleanup) => this.log())
 class MyButton extends HTMLElement {
   @reactive
   accessor count = 0;
