@@ -147,7 +147,17 @@ export interface Action {
   /**
    * @param onCleanup Registers a callback to run before the next execution or when the effect stops.
    */
-  (onCleanup: (callback: VoidFunction) => void): void;
+  (onCleanup: RegisterCleanup): void;
+}
+
+/** Registers a cleanup callback for an effect. */
+export interface RegisterCleanup {
+  /**
+   * Registers a callback to clean up resources created during an action execution.
+   *
+   * @param callback The cleanup callback to execute before the next action execution or when the effect stops.
+   */
+  (callback: VoidFunction): void;
 }
 
 /** Manages the execution, dependencies, and cleanup of a reactive action. */

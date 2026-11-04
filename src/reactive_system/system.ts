@@ -1,4 +1,10 @@
-import { Signal, Effect, Observer, ReactiveContext } from "./reactive.ts";
+import {
+  Signal,
+  Effect,
+  Observer,
+  ReactiveContext,
+  type Action,
+} from "./reactive.ts";
 
 /** The constructors exposed by a context-bound reactive system. */
 export interface ReactiveSystem {
@@ -27,9 +33,9 @@ export interface EffectConstructor {
   /**
    * Creates an effect with a function to execute.
    *
-   * @param fn The function to execute and track.
+   * @param action The function to execute and track.
    */
-  new (fn: VoidFunction): Effect;
+  new (action: Action): Effect;
 }
 
 /** Constructor type for observers bound to a reactive context. */
