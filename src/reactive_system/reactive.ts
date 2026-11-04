@@ -45,7 +45,7 @@ export interface ReactiveContext extends EventTarget {
 /** Tracks reactive dependencies and dispatches events when effects are invalidated. */
 export class ReactiveContext extends EventTarget {
   /** The map connecting reactive dependencies to their effects. */
-  readonly #map = new BiMultiMap<WeakKey, Effect>();
+  readonly #map = new BiMultiMap<WeakKey, VoidFunction>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
@@ -80,21 +80,21 @@ export class ReactiveContext extends EventTarget {
   /**
    * Updates the effects subscribed to a dependency set.
    *
-   * @param effect The effect whose dependencies changed.
+   * @param callback The effect whose dependencies changed.
    * @param next The effect's new dependency keys.
    */
-  updateDependencies(effect: Effect, next: ReadonlySet<WeakKey>): void {
-    const previous = this.#map.getReverse(effect);
+  updateDependencies(callback: VoidFunction, next: ReadonlySet<WeakKey>): void {
+    const previous = this.#map.getReverse(callback);
 
     for (const ref of previous) {
       if (!next.has(ref)) {
-        this.#map.delete(ref, effect);
+        this.#map.delete(ref, callback);
       }
     }
 
     for (const ref of next) {
       if (!previous.has(ref)) {
-        this.#map.add(ref, effect);
+        this.#map.add(ref, callback);
       }
     }
   }
@@ -106,9 +106,7 @@ export class ReactiveContext extends EventTarget {
    */
   notifyChange(ref: WeakKey): void {
     for (const effect of this.#map.get(ref)) {
-      this.dispatchEvent(
-        new CustomEvent("invalidate", { detail: () => effect.run() }),
-      );
+      this.dispatchEvent(new CustomEvent("invalidate", { detail: effect }));
     }
   }
 }
@@ -208,9 +206,6 @@ export interface Action {
 
 /** Manages the execution and dependencies of a reactive action. */
 export class Effect {
-  /** The function executed by this effect. */
-  #action: Action;
-
   /** The context that tracks this effect and its dependencies. */
   #context: ReactiveContext;
 
@@ -224,27 +219,29 @@ export class Effect {
    * @param action The function to execute and track.
    */
   constructor(context: ReactiveContext, action: Action) {
-    this.#action = action;
+    const run = (): void => {
+      if (this.#stopped) return;
+
+      const { dependencies } = this.#context.capture(action);
+
+      if (!this.#stopped) {
+        this.#context.updateDependencies(run, dependencies);
+      }
+    };
+
     this.#context = context;
+    this.run = run;
   }
 
   /** Executes the effect while collecting its signal dependencies. */
-  run(): void {
-    if (this.#stopped) return;
-
-    const { dependencies } = this.#context.capture(this.#action);
-
-    if (!this.#stopped) {
-      this.#context.updateDependencies(this, dependencies);
-    }
-  }
+  run: () => void;
 
   /** Stops the effect and removes its dependencies. */
   stop(): void {
     if (this.#stopped) return;
 
     this.#stopped = true;
-    this.#context.updateDependencies(this, new Set());
+    this.#context.updateDependencies(this.run, new Set());
   }
 }
 
