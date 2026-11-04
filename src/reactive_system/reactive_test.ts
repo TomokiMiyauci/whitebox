@@ -55,7 +55,7 @@ describe("Signal", () => {
 
   it("should notify changes when updated", () => {
     const stub = mock();
-    context.notifyChange = stub;
+    context.trigger = stub;
 
     const signal = new Signal(context, 1);
 
@@ -66,7 +66,7 @@ describe("Signal", () => {
 
   it("should not notify changes when setting the same value", () => {
     const stub = mock();
-    context.notifyChange = stub;
+    context.trigger = stub;
 
     const signal = new Signal(context, 1);
 

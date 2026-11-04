@@ -93,7 +93,7 @@ export class ReactiveContext extends EventTarget {
    *
    * @param ref The reactive value that changed.
    */
-  notifyChange(ref: WeakKey): void {
+  trigger(ref: WeakKey): void {
     for (const effect of this.#map.get(ref)) {
       this.dispatchEvent(new CustomEvent("invalidate", { detail: effect }));
     }
@@ -127,7 +127,7 @@ export class Signal<T> extends State<T> {
     const changed = super.set(value);
 
     if (changed) {
-      this.#context.notifyChange(this);
+      this.#context.trigger(this);
     }
 
     return changed;
