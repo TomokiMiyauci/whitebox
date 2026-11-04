@@ -1,16 +1,5 @@
 import { BiMultiMap } from "./collection.ts";
-
-/** Defines how two values are compared for equality. */
-interface Equality<T> {
-  /**
-   * Determines whether two values are considered equal.
-   *
-   * @param left The first value to compare.
-   * @param right The second value to compare.
-   * @returns `true` when the values are equal.
-   */
-  equals(left: T, right: T): boolean;
-}
+import { State } from "./state.ts";
 
 /** Defines the event types emitted by a reactive context. */
 interface EventMap {
@@ -108,55 +97,6 @@ export class ReactiveContext extends EventTarget {
     for (const effect of this.#map.get(ref)) {
       this.dispatchEvent(new CustomEvent("invalidate", { detail: effect }));
     }
-  }
-}
-
-/** Stores a value and provides a customizable equality check for updates. */
-export class State<T> implements Equality<T> {
-  /** The value currently stored by this state. */
-  #current: T;
-
-  /**
-   * Creates a state with an initial value.
-   *
-   * @param current The initial value.
-   */
-  constructor(current: T) {
-    this.#current = current;
-  }
-
-  /** Gets the current value. */
-  get get(): T {
-    return this.#current;
-  }
-
-  /**
-   * Updates the value if it is not equal to the current value.
-   *
-   * @param value The value to store.
-   * @returns `true` if the value changed; otherwise, `false`.
-   */
-  set(value: T): boolean {
-    if (this.equals(this.#current, value)) {
-      return false;
-    }
-
-    this.#current = value;
-
-    return true;
-  }
-
-  /**
-   * Compares values using `Object.is`.
-   *
-   * Override this method to customize the equality check.
-   *
-   * @param left The current value.
-   * @param right The proposed value.
-   * @returns `true` if the values are equal.
-   */
-  equals(left: T, right: T): boolean {
-    return Object.is(left, right);
   }
 }
 
@@ -276,56 +216,4 @@ export class Observer {
       this.#context.removeEventListener("invalidate", handle);
     };
   }
-}
-
-/** The constructors exposed by a context-bound reactive system. */
-export interface ReactiveSystem {
-  /** Constructs signals that use the system's reactive context. */
-  Signal: SignalConstructor;
-
-  /** Constructs effects that use the system's reactive context. */
-  Effect: EffectConstructor;
-
-  /** Constructs observers that use the system's reactive context. */
-  Observer: ObserverConstructor;
-}
-
-/** Constructor type for signals bound to a reactive context. */
-export interface SignalConstructor {
-  /**
-   * Creates a signal with an initial value.
-   *
-   * @param init The initial value.
-   */
-  new <T>(init: T): Signal<T>;
-}
-
-/** Constructor type for effects bound to a reactive context. */
-export interface EffectConstructor {
-  /**
-   * Creates an effect with a function to execute.
-   *
-   * @param fn The function to execute and track.
-   */
-  new (fn: VoidFunction): Effect;
-}
-
-/** Constructor type for observers bound to a reactive context. */
-export interface ObserverConstructor {
-  new (): Observer;
-}
-
-/**
- * Creates signal, effect, and observer constructors that share a reactive context.
- *
- * @returns Constructors bound to the created reactive context.
- */
-export function createReactiveSystem(): ReactiveSystem {
-  const context = new ReactiveContext();
-
-  return {
-    Signal: Signal.bind(null, context) as SignalConstructor,
-    Effect: Effect.bind(null, context),
-    Observer: Observer.bind(null, context),
-  };
 }
