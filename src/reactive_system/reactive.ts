@@ -268,7 +268,7 @@ export class Observer {
    * @param fn The callback invoked with the invalidated action.
    * @returns A function that removes the event listener.
    */
-  observe(fn: (action: VoidFunction) => void): VoidFunction {
+  observe(fn: (callback: VoidFunction) => void): VoidFunction {
     function handle(ev: CustomEvent<VoidFunction>): void {
       fn(ev.detail);
     }
