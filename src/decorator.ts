@@ -70,9 +70,7 @@ export function effect<C extends new (...args: any) => any>(
 
         const bound = () => action(this as InstanceType<C>);
 
-        const effect = new Effect(bound);
-
-        effect.run();
+        new Effect(bound);
       }
     };
   };
