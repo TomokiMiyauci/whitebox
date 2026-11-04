@@ -11,6 +11,9 @@
     "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
     "module": "esnext",
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true
   }
 }
