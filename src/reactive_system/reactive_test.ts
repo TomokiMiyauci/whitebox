@@ -220,6 +220,97 @@ describe("Effect", () => {
 
     expect(() => signal.set(2)).not.toThrow();
   });
+
+  it("should not run cleanup before rerunning", () => {
+    const context = new ReactiveContext();
+    new Observer(context).observe((callback) => callback());
+    const stub = mock();
+
+    new Effect(context, (onCleanup) => {
+      onCleanup(stub);
+    });
+
+    expect(stub).not.toHaveBeenCalled();
+  });
+
+  it("should run cleanup before rerunning", () => {
+    const context = new ReactiveContext();
+    new Observer(context).observe((callback) => callback());
+    const signal = new Signal(context, 1);
+    const calls: string[] = [];
+
+    new Effect(context, (onCleanup) => {
+      calls.push("run");
+      onCleanup(() => calls.push("cleanup"));
+      signal.get;
+    });
+
+    expect(calls).toEqual(["run"]);
+
+    signal.set(2);
+
+    expect(calls).toEqual(["run", "cleanup", "run"]);
+  });
+
+  it("should run cleanup when stopped", () => {
+    const context = new ReactiveContext();
+    const signal = new Signal(context, 1);
+    const cleanup = mock();
+
+    const effect = new Effect(context, (onCleanup) => {
+      onCleanup(cleanup);
+      signal.get;
+    });
+
+    expect(cleanup).not.toHaveBeenCalled();
+
+    effect.stop();
+
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("should run each cleanup only once", () => {
+    const context = new ReactiveContext();
+    new Observer(context).observe((callback) => callback());
+    const signal = new Signal(context, 1);
+    const first = mock();
+    const second = mock();
+
+    const effect = new Effect(context, (onCleanup) => {
+      onCleanup(first);
+      onCleanup(second);
+      signal.get;
+    });
+
+    signal.set(2);
+
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledOnce();
+
+    effect.stop();
+
+    expect(first).toHaveBeenCalledTimes(2);
+    expect(second).toHaveBeenCalledTimes(2);
+  });
+
+  it("should not track dependencies during cleanup", () => {
+    const context = new ReactiveContext();
+    const scheduled = observe(context);
+    const signal = new Signal(context, 1);
+    const cleanupSignal = new Signal(context, 1);
+
+    new Effect(context, (onCleanup) => {
+      onCleanup(() => cleanupSignal.get);
+      signal.get;
+    });
+
+    signal.set(2);
+    scheduled.shift()?.();
+
+    cleanupSignal.set(2);
+
+    expect(scheduled).toHaveLength(0);
+  });
 });
 
 describe("Observer", () => {

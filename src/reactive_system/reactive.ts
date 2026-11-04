@@ -141,7 +141,7 @@ export class Signal<T> extends State<T> {
 }
 
 export interface Action {
-  (): void;
+  (onCleanup: (callback: VoidFunction) => void): void;
 }
 
 /** Manages the execution and dependencies of a reactive action. */
@@ -153,7 +153,9 @@ export class Effect {
   #stopped = false;
 
   /** Executes the effect while collecting its signal dependencies. */
-  #run: () => void;
+  #run: VoidFunction;
+
+  #cleanups: VoidFunction[] = [];
 
   /**
    * Creates an effect in a reactive context.
@@ -165,7 +167,17 @@ export class Effect {
     const run = (): void => {
       if (this.#stopped) return;
 
-      const { dependencies } = context.capture(action);
+      this.#cleanup();
+
+      const onCleanup = (callback: VoidFunction) => {
+        this.#cleanups.push(callback);
+      };
+
+      const callback = () => {
+        action(onCleanup);
+      };
+
+      const { dependencies } = context.capture(callback);
       context.updateDependencies(run, dependencies);
     };
 
@@ -175,12 +187,21 @@ export class Effect {
     run();
   }
 
+  #cleanup(): void {
+    for (const cleanup of this.#cleanups) {
+      cleanup();
+    }
+    this.#cleanups = [];
+  }
+
   /** Stops the effect and removes its dependencies. */
   stop(): void {
     if (this.#stopped) return;
 
     this.#stopped = true;
     this.#context.updateDependencies(this.#run, new Set());
+
+    this.#cleanup();
   }
 }
 
