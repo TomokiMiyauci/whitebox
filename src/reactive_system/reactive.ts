@@ -202,10 +202,14 @@ export class Signal<T> extends State<T> {
   }
 }
 
-/** Runs a function and tracks the signals read while it is running. */
+export interface Action {
+  (): void;
+}
+
+/** Manages the execution and dependencies of a reactive action. */
 export class Effect {
   /** The function executed by this effect. */
-  #fn: VoidFunction;
+  #action: Action;
 
   /** The context that tracks this effect and its dependencies. */
   #context: ReactiveContext;
@@ -217,10 +221,10 @@ export class Effect {
    * Creates an effect in a reactive context.
    *
    * @param context The context that manages this effect.
-   * @param fn The function to execute and track.
+   * @param action The function to execute and track.
    */
-  constructor(context: ReactiveContext, fn: VoidFunction) {
-    this.#fn = fn;
+  constructor(context: ReactiveContext, action: Action) {
+    this.#action = action;
     this.#context = context;
   }
 
@@ -228,7 +232,7 @@ export class Effect {
   run(): void {
     if (this.#stopped) return;
 
-    const { dependencies } = this.#context.capture(this.#fn);
+    const { dependencies } = this.#context.capture(this.#action);
 
     if (!this.#stopped) {
       this.#context.updateDependencies(this, dependencies);
@@ -261,7 +265,7 @@ export class Observer {
   /**
    * Subscribes to effect invalidation notifications.
    *
-   * @param fn The callback invoked with the invalidated effect's reaction.
+   * @param fn The callback invoked with the invalidated action.
    * @returns A function that removes the event listener.
    */
   observe(fn: (action: VoidFunction) => void): VoidFunction {
