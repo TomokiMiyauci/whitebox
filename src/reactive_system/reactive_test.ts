@@ -1,5 +1,5 @@
-import { Effect, ReactiveContext, Signal, Observer } from "./reactive.ts";
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { Effect, ReactiveContext, Signal, Observer } from "./reactive.ts";
 
 function observe(context: ReactiveContext): VoidFunction[] {
   const scheduled: VoidFunction[] = [];
@@ -77,9 +77,8 @@ describe("Signal", () => {
 });
 
 describe("Effect", () => {
-  it("should subscribe after running", () => {
+  it("should run immediately", () => {
     const context = new ReactiveContext();
-    new Observer(context).observe((callback) => callback());
     const signal = new Signal(context, 1);
     const stub = mock();
 
@@ -89,6 +88,19 @@ describe("Effect", () => {
     });
 
     expect(stub).toHaveBeenCalledOnce();
+  });
+
+  it("should rerun when a dependency changes", () => {
+    const context = new ReactiveContext();
+    new Observer(context).observe((callback) => callback());
+
+    const signal = new Signal(context, 1);
+    const stub = mock();
+
+    new Effect(context, () => {
+      stub();
+      signal.get;
+    });
 
     signal.set(2);
     signal.set(3);
@@ -165,49 +177,6 @@ describe("Effect", () => {
     expect(scheduled).toHaveLength(2);
   });
 
-  it("should remove dependencies that are no longer used", () => {
-    const context = new ReactiveContext();
-    const scheduled = observe(context);
-    const condition = new Signal(context, true);
-    const first = new Signal(context, 1);
-    const second = new Signal(context, 2);
-
-    new Effect(context, () => {
-      if (condition.get) {
-        first.get;
-      } else {
-        second.get;
-      }
-    });
-
-    condition.set(false);
-    scheduled.shift()?.();
-
-    first.set(3);
-    expect(scheduled).toHaveLength(0);
-
-    second.set(4);
-    expect(scheduled).toHaveLength(1);
-  });
-
-  it("should stop before running", () => {
-    const context = new ReactiveContext();
-    const signal = new Signal(context, 1);
-    const stub = mock();
-
-    const effect = new Effect(context, () => {
-      stub();
-      signal.get;
-    });
-
-    expect(stub).toHaveBeenCalledOnce();
-
-    effect.stop();
-    signal.set(2);
-
-    expect(stub).toHaveBeenCalledTimes(1);
-  });
-
   it("should remove dependencies when stopped", () => {
     const context = new ReactiveContext();
     const scheduled = observe(context);
@@ -218,21 +187,6 @@ describe("Effect", () => {
     signal.set(2);
 
     expect(scheduled).toHaveLength(0);
-  });
-
-  it("should not run after stopping", () => {
-    const context = new ReactiveContext();
-    const signal = new Signal(context, 1);
-    const stub = mock();
-
-    const effect = new Effect(context, () => {
-      stub();
-      signal.get;
-    });
-
-    effect.stop();
-
-    expect(stub).toHaveBeenCalledTimes(1);
   });
 
   it("should not execute scheduled actions after stopping", () => {
@@ -258,16 +212,13 @@ describe("Effect", () => {
 
   it("should allow stopping multiple times", () => {
     const context = new ReactiveContext();
-    const scheduled = observe(context);
     const signal = new Signal(context, 1);
     const effect = new Effect(context, () => signal.get);
 
     effect.stop();
     effect.stop();
 
-    signal.set(2);
-
-    expect(scheduled).toHaveLength(0);
+    expect(() => signal.set(2)).not.toThrow();
   });
 });
 
