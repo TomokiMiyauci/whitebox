@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.1.0...v0.2.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* change effect decorator interface to accept cleanup callback at first argument
+* remove run method from Effect constructor, run on construction
+
+### Features
+
+* add clean up callback to action argument ([a2cdc4d](https://github.com/TomokiMiyauci/whitebox/commit/a2cdc4dec60d85bf2cf25292a5203c35b261783a))
+* change effect decorator interface to accept cleanup callback at first argument ([2e7664f](https://github.com/TomokiMiyauci/whitebox/commit/2e7664fea33f2140cdd92b95fa0d64acd7ba335e))
+* export RegisterCleanup interface and update Action type definition ([42e521a](https://github.com/TomokiMiyauci/whitebox/commit/42e521a1cf0c4d8dd1f0c09b77d816912001837d))
+* export Signal and Action types ([c340479](https://github.com/TomokiMiyauci/whitebox/commit/c340479164a0727a29cd862f55a551341da6929d))
+* remove run method from Effect constructor, run on construction ([b50e043](https://github.com/TomokiMiyauci/whitebox/commit/b50e0439eb0b77d40ecada62aa1fd82dfcb35f96))
+
+
+### Bug Fixes
+
+* remove calling run method from effect instance ([bd7c191](https://github.com/TomokiMiyauci/whitebox/commit/bd7c191e7529eeb70a6b5f8fe42b8eb370f2f2a6))
+
 ## 0.1.0 (2026-11-03)
 
 
