@@ -3,7 +3,7 @@ import { State } from "./state.ts";
 
 /** Defines the event types emitted by a reactive context. */
 interface EventMap {
-  /** Dispatched when a reactive effect is invalidated. */
+  /** Dispatched when a dependency invalidates a reactive action. */
   invalidate: CustomEvent<VoidFunction>;
 }
 
@@ -31,9 +31,9 @@ export interface ReactiveContext extends EventTarget {
   ): void;
 }
 
-/** Tracks reactive dependencies and dispatches events when effects are invalidated. */
+/** Tracks reactive dependencies and dispatches events when actions are invalidated. */
 export class ReactiveContext extends EventTarget {
-  /** The map connecting reactive dependencies to their effects. */
+  /** Maps reactive dependencies to the actions that depend on them. */
   readonly #map = new BiMultiMap<WeakKey, VoidFunction>();
 
   /** Dependencies collected by the current capture operation, if any. */
@@ -42,7 +42,7 @@ export class ReactiveContext extends EventTarget {
   /**
    * Runs a function while collecting its dependency keys.
    *
-   * @param fn The function to run.
+   * @param fn The function to execute.
    * @returns The function result and the dependency keys read during execution.
    */
   capture<T>(fn: () => T): { value: T; dependencies: Set<WeakKey> } {
@@ -58,19 +58,19 @@ export class ReactiveContext extends EventTarget {
   }
 
   /**
-   * Records a dependency on the currently active effect.
+   * Records a dependency for the current capture operation.
    *
-   * @param ref The reactive value being read.
+   * @param ref The reactive value being tracked.
    */
   track(ref: WeakKey): void {
     this.#activeDependencies?.add(ref);
   }
 
   /**
-   * Updates the effects subscribed to a dependency set.
+   * Updates the dependencies associated with an action.
    *
-   * @param callback The effect whose dependencies changed.
-   * @param next The effect's new dependency keys.
+   * @param callback The action whose dependencies are being updated.
+   * @param next The action's new dependency keys.
    */
   updateDependencies(callback: VoidFunction, next: ReadonlySet<WeakKey>): void {
     const previous = this.#map.getReverse(callback);
@@ -89,7 +89,7 @@ export class ReactiveContext extends EventTarget {
   }
 
   /**
-   * Notifies observers about effects that depend on the given reactive value.
+   * Dispatches invalidation events for actions that depend on the given value.
    *
    * @param ref The reactive value that changed.
    */
@@ -100,15 +100,15 @@ export class ReactiveContext extends EventTarget {
   }
 }
 
-/** A state that tracks reads and notifies effects when its value changes. */
+/** A state that tracks reads and notifies dependent actions when its value changes. */
 export class Signal<T> extends State<T> {
-  /** The context used to track reads and notify dependent effects. */
+  /** The context used to track reads and notify dependent actions. */
   #context: ReactiveContext;
 
   /**
    * Creates a signal in a reactive context.
    *
-   * @param context The context that manages dependent effects.
+   * @param context The context that manages dependencies.
    * @param current The initial value.
    */
   constructor(context: ReactiveContext, current: T) {
@@ -118,7 +118,7 @@ export class Signal<T> extends State<T> {
   }
 
   /**
-   * Updates the signal and notifies dependent effects when it changes.
+   * Updates the signal and notifies dependent actions when its value changes.
    *
    * @param value The value to store.
    * @returns `true` if the value changed; otherwise, `false`.
@@ -140,11 +140,17 @@ export class Signal<T> extends State<T> {
   }
 }
 
+/**
+ * A function executed by an effect.
+ */
 export interface Action {
+  /**
+   * @param onCleanup Registers a callback to run before the next execution or when the effect stops.
+   */
   (onCleanup: (callback: VoidFunction) => void): void;
 }
 
-/** Manages the execution and dependencies of a reactive action. */
+/** Manages the execution, dependencies, and cleanup of a reactive action. */
 export class Effect {
   /** The context that tracks this effect and its dependencies. */
   #context: ReactiveContext;
@@ -152,16 +158,17 @@ export class Effect {
   /** Whether this effect has been stopped. */
   #stopped = false;
 
-  /** Executes the effect while collecting its signal dependencies. */
+  /** Executes the action while collecting its dependencies. */
   #run: VoidFunction;
 
+  /** Cleanup callbacks registered by the current action execution. */
   #cleanups: VoidFunction[] = [];
 
   /**
-   * Creates an effect in a reactive context.
+   * Creates and immediately executes an effect in a reactive context.
    *
-   * @param context The context that manages this effect.
-   * @param action The function to execute and track.
+   * @param context The context that manages dependencies.
+   * @param action The action to execute and track.
    */
   constructor(context: ReactiveContext, action: Action) {
     const run = (): void => {
@@ -187,6 +194,9 @@ export class Effect {
     run();
   }
 
+  /**
+   * Executes and clears the cleanup callbacks from the previous action execution.
+   */
   #cleanup(): void {
     for (const cleanup of this.#cleanups) {
       cleanup();
@@ -194,7 +204,9 @@ export class Effect {
     this.#cleanups = [];
   }
 
-  /** Stops the effect and removes its dependencies. */
+  /**
+   * Stops the effect, removes its dependencies, and executes remaining cleanup callbacks.
+   */
   stop(): void {
     if (this.#stopped) return;
 
