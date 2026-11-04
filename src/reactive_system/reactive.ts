@@ -1,3 +1,5 @@
+import { BiMultiMap } from "./collection.ts";
+
 /** Defines how two values are compared for equality. */
 interface Equality<T> {
   /**
@@ -42,8 +44,8 @@ export interface ReactiveContext extends EventTarget {
 
 /** Tracks reactive dependencies and dispatches events when effects are invalidated. */
 export class ReactiveContext extends EventTarget {
-  /** The graph connecting reactive dependencies to their effects. */
-  readonly #graph = new Graph<WeakKey, Effect>();
+  /** The map connecting reactive dependencies to their effects. */
+  readonly #map = new BiMultiMap<WeakKey, Effect>();
 
   /** Dependencies collected by the current capture operation, if any. */
   #activeDependencies: Set<WeakKey> | undefined;
@@ -82,17 +84,17 @@ export class ReactiveContext extends EventTarget {
    * @param next The effect's new dependency keys.
    */
   updateDependencies(effect: Effect, next: ReadonlySet<WeakKey>): void {
-    const previous = this.#graph.getReverse(effect);
+    const previous = this.#map.getReverse(effect);
 
     for (const ref of previous) {
       if (!next.has(ref)) {
-        this.#graph.delete(ref, effect);
+        this.#map.delete(ref, effect);
       }
     }
 
     for (const ref of next) {
       if (!previous.has(ref)) {
-        this.#graph.add(ref, effect);
+        this.#map.add(ref, effect);
       }
     }
   }
@@ -103,7 +105,7 @@ export class ReactiveContext extends EventTarget {
    * @param ref The reactive value that changed.
    */
   notifyChange(ref: WeakKey): void {
-    for (const effect of this.#graph.get(ref)) {
+    for (const effect of this.#map.get(ref)) {
       this.dispatchEvent(
         new CustomEvent("invalidate", { detail: () => effect.run() }),
       );
@@ -197,76 +199,6 @@ export class Signal<T> extends State<T> {
   override get get(): T {
     this.#context.track(this);
     return super.get;
-  }
-}
-
-/**
- * A directed graph that maintains relationships between two types of nodes.
- *
- * Stores edges from {@link T} to {@link U} and supports lookups in both directions.
- */
-export class Graph<T extends WeakKey, U extends WeakKey> {
-  /** The forward adjacency map from source nodes to target nodes. */
-  #forward = new WeakMap<T, Set<U>>();
-
-  /** The reverse adjacency map from target nodes to source nodes. */
-  #reverse = new WeakMap<U, Set<T>>();
-
-  /**
-   * Adds a directed edge from {@link from} to {@link to}.
-   *
-   * @param from The source node.
-   * @param to The target node.
-   */
-  add(from: T, to: U): void {
-    let targets = this.#forward.get(from);
-    if (!targets) {
-      targets = new Set();
-      this.#forward.set(from, targets);
-    }
-
-    let sources = this.#reverse.get(to);
-    if (!sources) {
-      sources = new Set();
-      this.#reverse.set(to, sources);
-    }
-
-    targets.add(to);
-    sources.add(from);
-  }
-
-  /**
-   * Removes the directed edge from {@link from} to {@link to}.
-   *
-   * @param from The source node.
-   * @param to The target node.
-   */
-  delete(from: T, to: U): void {
-    const targets = this.#forward.get(from);
-    const sources = this.#reverse.get(to);
-
-    targets?.delete(to);
-    sources?.delete(from);
-  }
-
-  /**
-   * Returns the target nodes connected from the given source node.
-   *
-   * @param from The source node.
-   * @returns The set of target nodes connected from {@link from}.
-   */
-  get(from: T): ReadonlySet<U> {
-    return this.#forward.get(from) ?? new Set();
-  }
-
-  /**
-   * Returns the source nodes connected to the given target node.
-   *
-   * @param to The target node.
-   * @returns The set of source nodes connected to {@link to}.
-   */
-  getReverse(to: U): ReadonlySet<T> {
-    return this.#reverse.get(to) ?? new Set();
   }
 }
 
