@@ -156,7 +156,7 @@ export interface ReactiveNode {
    * Tracks whether producers need to recompute their value independently of the reactive graph (for
    * example, if no initial value has been computed).
    */
-  producerMustRecompute(node: unknown): boolean;
+  producerMustRecompute(): boolean;
   producerRecomputeValue(node: unknown): void;
   consumerMarkedDirty(this: unknown): void;
 
@@ -269,10 +269,7 @@ export function producerUpdateValueVersion(node: ReactiveNode): void {
     return;
   }
 
-  if (
-    !node.producerMustRecompute(node) &&
-    !consumerPollProducersForChange(node)
-  ) {
+  if (!node.producerMustRecompute() && !consumerPollProducersForChange(node)) {
     // None of our producers report a change since the last time they were read, so no
     // recomputation of our value is necessary, and we can consider ourselves clean.
     node.dirty = false;

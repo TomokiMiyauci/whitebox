@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-import { computedGet, createComputed, type ComputedNode } from "./computed.ts";
+import { WithComputed } from "./computed.ts";
 import {
   getActiveConsumer,
-  isInNotificationPhase,
   producerAccessed,
   assertConsumerNode,
   setActiveConsumer,
@@ -27,12 +26,7 @@ import {
   assertProducerNode,
   producerRemoveLiveConsumerAtIndex,
 } from "./graph.ts";
-import {
-  createSignal,
-  signalGetFn,
-  signalSetFn,
-  type SignalNode,
-} from "./signal.ts";
+import { StateWithContext } from "./signal.ts";
 
 const NODE: unique symbol = Symbol("node");
 
@@ -43,60 +37,36 @@ export interface Signal<T> {
 
 export namespace Signal {
   // A read-write Signal
-  export class State<T> {
-    readonly [NODE]: SignalNode<T>;
+  export class State<T> extends StateWithContext<T> {
+    readonly [NODE]: ReactiveNode;
 
     constructor(initialValue: T, options: SignalOptions<T> = {}) {
-      const node = createSignal<T>(initialValue, this);
-      this[NODE] = node;
-      node.wrapper = this;
-      if (options) {
-        const equals = options.equals;
-        if (equals) {
-          node.equal = equals;
-        }
-        node.watched = options[Signal.subtle.watched];
-        node.unwatched = options[Signal.subtle.unwatched];
-      }
-    }
+      super(
+        initialValue,
+        options[Signal.subtle.watched],
+        options[Signal.subtle.unwatched],
+        options,
+      );
 
-    public get(): T {
-      return (signalGetFn<T>).call(this[NODE]);
-    }
-
-    public set(newValue: T): void {
-      if (isInNotificationPhase()) {
-        throw new Error(
-          "Writes to signals not permitted during Watcher callback",
-        );
-      }
-      const ref = this[NODE];
-      signalSetFn<T>(ref, newValue);
+      this[NODE] = this.context;
     }
   }
 
   // A Signal which is a formula based on other Signals
-  export class Computed<T> {
-    readonly [NODE]: ComputedNode<T>;
+  export class Computed<T> extends WithComputed<T> {
+    readonly [NODE]: ReactiveNode;
 
     // Create a Signal which evaluates to the value returned by the callback.
     // Callback is called with this signal as the parameter.
-    constructor(computation: () => T, options?: SignalOptions<T>) {
-      const node = createComputed<T>(computation, this);
+    constructor(computation: () => T, options: SignalOptions<T> = {}) {
+      super(
+        computation,
+        options[Signal.subtle.watched],
+        options[Signal.subtle.unwatched],
+        options?.equals,
+      );
 
-      this[NODE] = node;
-      if (options) {
-        const equals = options.equals;
-        if (equals) {
-          node.equal = equals;
-        }
-        node.watched = options[Signal.subtle.watched];
-        node.unwatched = options[Signal.subtle.unwatched];
-      }
-    }
-
-    get(): T {
-      return computedGet(this[NODE]);
+      this[NODE] = this.context;
     }
   }
 

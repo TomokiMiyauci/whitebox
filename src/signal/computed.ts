@@ -1,12 +1,4 @@
-/**
- * @license
- * Copyright Google LLC All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-
-import { type Equality, type Signal } from "./equality.ts";
+import { type Signal } from "./equality.ts";
 import {
   consumerAfterComputation,
   consumerBeforeComputation,
@@ -15,105 +7,6 @@ import {
   REACTIVE_NODE,
   type ReactiveNode,
 } from "./graph.ts";
-
-/**
- * A computation, which derives a value from a declarative reactive expression.
- *
- * `Computed`s are both producers and consumers of reactivity.
- */
-export interface ComputedNode<T> extends ReactiveNode, Equality<T> {
-  /**
-   * Current value of the computation, or one of the sentinel values above (`UNSET`, `COMPUTING`,
-   * `ERROR`).
-   */
-  value: T | typeof UNSET;
-
-  /**
-   * If `value` is `ERRORED`, the error caught from the last computation attempt which will
-   * be re-thrown.
-   */
-  error: unknown;
-
-  /**
-   * The computation function which will produce a new value.
-   */
-  computation: () => T;
-}
-
-export function computedGet<T>(node: ComputedNode<T>) {
-  // Check if the value needs updating before returning it.
-  producerUpdateValueVersion(node);
-
-  // Record that someone looked at this signal.
-  producerAccessed(node);
-
-  if (node.value === ERRORED) {
-    throw node.error;
-  }
-
-  return node.value;
-}
-
-/**
- * Create a computed signal which derives a reactive value from an expression.
- */
-export function createComputed<T>(
-  computation: () => T,
-  self: Signal<T>,
-): ComputedNode<T> {
-  const node: ComputedNode<T> = {
-    ...REACTIVE_NODE,
-    value: UNSET,
-    dirty: true,
-    error: null,
-    equal: Object.is,
-
-    producerMustRecompute(node: ComputedNode<unknown>): boolean {
-      // Force a recomputation if there's no current value, or if the current value is in the
-      // process of being calculated (which should throw an error).
-      return node.value === UNSET || node.value === COMPUTING;
-    },
-
-    producerRecomputeValue(node: ComputedNode<unknown>): void {
-      if (node.value === COMPUTING) {
-        // Our computation somehow led to a cyclic read of itself.
-        throw new Error("Detected cycle in computations.");
-      }
-
-      const oldValue = node.value;
-      node.value = COMPUTING;
-
-      const prevConsumer = consumerBeforeComputation(node);
-      let newValue: unknown;
-      let wasEqual = false;
-      try {
-        newValue = node.computation.call(node.wrapper);
-        const oldOk = oldValue !== UNSET && oldValue !== ERRORED;
-        wasEqual = oldOk && node.equal.call(node.wrapper, oldValue, newValue);
-      } catch (err) {
-        newValue = ERRORED;
-        node.error = err;
-      } finally {
-        consumerAfterComputation(node, prevConsumer);
-      }
-
-      if (wasEqual) {
-        // No change to `valueVersion` - old and new values are
-        // semantically equivalent.
-        node.value = oldValue;
-        return;
-      }
-
-      node.value = newValue;
-      node.version++;
-    },
-    wrapper: self,
-    computation,
-    consumerAllowSignalWrites: true,
-  };
-
-  return node;
-}
 
 /**
  * A dedicated symbol used before a computed value has been calculated for the first time.
@@ -134,3 +27,94 @@ const COMPUTING = Symbol("COMPUTING");
  * Explicitly typed as `any` so we can use it as signal's value.
  */
 const ERRORED = Symbol("ERRORED");
+
+export class WithComputed<T> implements Signal<T> {
+  protected context: ReactiveNode;
+
+  /**
+   * Current value of the computation, or one of the sentinel values above (`UNSET`, `COMPUTING`,
+   * `ERROR`).
+   */
+  #value: T | typeof UNSET | typeof ERRORED | typeof COMPUTING = UNSET;
+
+  /**
+   * If `value` is `ERRORED`, the error caught from the last computation attempt which will
+   * be re-thrown.
+   */
+  #error: unknown = null;
+  constructor(
+    /**
+     * The computation function which will produce a new value.
+     */
+    computation: () => T,
+    watched: VoidFunction | undefined,
+    unwatched: VoidFunction | undefined,
+    equal: (left: T, right: T) => boolean = Object.is,
+  ) {
+    const self = this;
+    const node: ReactiveNode = {
+      ...REACTIVE_NODE,
+      dirty: true,
+
+      producerMustRecompute(): boolean {
+        // Force a recomputation if there's no current value, or if the current value is in the
+        // process of being calculated (which should throw an error).
+        return self.#value === UNSET || self.#value === COMPUTING;
+      },
+
+      producerRecomputeValue(node: ReactiveNode): void {
+        if (self.#value === COMPUTING) {
+          // Our computation somehow led to a cyclic read of itself.
+          throw new Error("Detected cycle in computations.");
+        }
+
+        const oldValue = self.#value;
+        self.#value = COMPUTING;
+
+        const prevConsumer = consumerBeforeComputation(node);
+        let newValue: T | typeof ERRORED;
+        let wasEqual = false;
+        try {
+          newValue = computation.call(node.wrapper);
+          const oldOk = oldValue !== UNSET && oldValue !== ERRORED;
+          wasEqual = oldOk && equal.call(node.wrapper, oldValue, newValue);
+        } catch (err) {
+          newValue = ERRORED;
+          self.#error = err;
+        } finally {
+          consumerAfterComputation(node, prevConsumer);
+        }
+
+        if (wasEqual) {
+          // No change to `valueVersion` - old and new values are
+          // semantically equivalent.
+          self.#value = oldValue;
+          return;
+        }
+
+        self.#value = newValue;
+        node.version++;
+      },
+      wrapper: this,
+      consumerAllowSignalWrites: true,
+      watched,
+      unwatched,
+    };
+
+    this.context = node;
+  }
+
+  get(): T {
+    // Check if the value needs updating before returning it.
+    producerUpdateValueVersion(this.context);
+
+    // Record that someone looked at this signal.
+    producerAccessed(this.context);
+
+    if (this.#value === ERRORED) {
+      throw this.#error;
+    }
+
+    return this.#value;
+  }
+}

@@ -1,12 +1,3 @@
-/**
- * @license
- * Copyright Google LLC All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-
-import { type Equality, type Signal } from "./equality.ts";
 import { throwInvalidWriteToSignalError } from "./errors.ts";
 import {
   producerAccessed,
@@ -15,44 +6,60 @@ import {
   producerUpdatesAllowed,
   REACTIVE_NODE,
   type ReactiveNode,
+  isInNotificationPhase,
 } from "./graph.ts";
 
-export interface SignalNode<T> extends ReactiveNode, Equality<T> {
-  value: T;
-}
+export class StateWithContext<T> {
+  protected context: ReactiveNode;
+  #value: T;
+  #equal: (left: T, right: T) => boolean;
+  constructor(
+    initialValue: T,
+    watched: VoidFunction | undefined,
+    unwatched: VoidFunction | undefined,
+    options?: SignalOptions<T>,
+  ) {
+    const context = {
+      ...REACTIVE_NODE,
+      wrapper: this,
+      watched,
+      unwatched,
+    } satisfies ReactiveNode;
 
-/**
- * Create a `Signal` that can be set or updated directly.
- */
-export function createSignal<T>(
-  initialValue: T,
-  self: Signal<unknown>,
-): SignalNode<T> {
-  const node: SignalNode<T> = {
-    ...REACTIVE_NODE,
-    equal: Object.is,
-    wrapper: self,
-    value: initialValue,
-  };
-  node.value = initialValue;
-
-  return node;
-}
-
-export function signalGetFn<T>(this: SignalNode<T>): T {
-  producerAccessed(this);
-  return this.value;
-}
-
-export function signalSetFn<T>(node: SignalNode<T>, newValue: T) {
-  if (!producerUpdatesAllowed()) {
-    throwInvalidWriteToSignalError();
+    this.context = context;
+    this.#value = initialValue;
+    this.#equal = options?.equals ?? Object.is;
   }
 
-  if (!node.equal.call(node.wrapper, node.value, newValue)) {
-    node.value = newValue;
-    node.version++;
-    producerIncrementEpoch();
-    producerNotifyConsumers(node);
+  get(): T {
+    producerAccessed(this.context);
+
+    return this.#value;
   }
+
+  set(newValue: T): void {
+    if (isInNotificationPhase()) {
+      throw new Error(
+        "Writes to signals not permitted during Watcher callback",
+      );
+    }
+
+    if (!producerUpdatesAllowed()) {
+      throwInvalidWriteToSignalError();
+    }
+
+    if (!this.#equal(this.#value, newValue)) {
+      this.#value = newValue;
+
+      this.context.version++;
+      producerIncrementEpoch();
+      producerNotifyConsumers(this.context);
+    }
+  }
+}
+
+interface SignalOptions<T> {
+  // Custom comparison function between old and new value. Default: Object.is.
+  // The signal is passed in as an optionally-used third parameter for context.
+  equals?: (t: T, t2: T) => boolean;
 }
