@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Signal } from "../wrapper.ts";
 
 describe("Dynamic dependencies", () => {
-  function run(live) {
+  function run(live: boolean): void {
     const states = Array.from("abcdefgh").map((s) => new Signal.State(s));
     const sources = new Signal.State(states);
     const computed = new Signal.Computed(() => {

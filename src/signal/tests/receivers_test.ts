@@ -3,15 +3,15 @@ import { Signal } from "../wrapper.ts";
 
 describe("Receivers", () => {
   it("is this for computed", () => {
-    let receiver;
-    const c = new Signal.Computed(function () {
+    let receiver: unknown;
+    const c = new Signal.Computed(function (this: unknown) {
       receiver = this;
     });
     expect(c.get()).toBe(undefined);
     expect(receiver).toBe(c);
   });
   it("is this for watched/unwatched", () => {
-    let r1, r2;
+    let r1: unknown, r2: unknown;
     const s = new Signal.State(1, {
       [Signal.subtle.watched]() {
         r1 = this;
@@ -30,7 +30,7 @@ describe("Receivers", () => {
     expect(r2).toBe(s);
   });
   it("is this for equals", () => {
-    let receiver;
+    let receiver: unknown;
     const options = {
       equals() {
         receiver = this;

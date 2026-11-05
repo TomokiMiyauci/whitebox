@@ -137,7 +137,7 @@ describe("Ported - Preact", () => {
     });
     const c = new Signal.Computed(() => {
       try {
-        b.get();
+        return b.get();
       } catch {
         return "ok";
       }

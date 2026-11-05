@@ -3,12 +3,12 @@ import { Signal } from "../wrapper.ts";
 
 describe("Cycles", () => {
   it("detects trivial cycles", () => {
-    const c = new Signal.Computed(() => c.get());
+    const c: Signal.Computed<unknown> = new Signal.Computed(() => c.get());
     expect(() => c.get()).toThrow();
   });
 
   it("detects slightly larger cycles", () => {
-    const c = new Signal.Computed(() => c2.get());
+    const c: Signal.Computed<unknown> = new Signal.Computed(() => c2.get());
     const c2 = new Signal.Computed(() => c.get());
     const c3 = new Signal.Computed(() => c2.get());
     expect(() => c3.get()).toThrow();

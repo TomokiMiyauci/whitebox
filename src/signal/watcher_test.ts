@@ -367,7 +367,7 @@ describe("watch and unwatch", () => {
     watcher.watch(...signals);
     expectSources(signals);
 
-    const unwatched = [0, 3, 4, 6].map((i) => signals[i]);
+    const unwatched = [0, 3, 4, 6].map((i) => signals[i]!);
     const watched = signals.filter((s) => !unwatched.includes(s));
 
     watcher.unwatch(...unwatched);
@@ -408,7 +408,7 @@ describe("Untrack", () => {
 describe("currentComputed", () => {
   it("works", () => {
     expect(Signal.subtle.currentComputed()).toBe(undefined);
-    let context: Signal.Computed<any> | undefined;
+    let context: any;
 
     let c = new Signal.Computed(
       () => (context = Signal.subtle.currentComputed()),
