@@ -56,7 +56,9 @@ export function signalSetFn<T>(node: SignalNode<T>, newValue: T) {
 
   if (!node.equal.call(node.wrapper, node.value, newValue)) {
     node.value = newValue;
-    signalValueChanged(node);
+    node.version++;
+    producerIncrementEpoch();
+    producerNotifyConsumers(node);
   }
 }
 
@@ -65,9 +67,3 @@ export const SIGNAL_NODE: SignalNode<unknown> = {
   equal: Object.is,
   value: undefined,
 };
-
-function signalValueChanged<T>(node: SignalNode<T>): void {
-  node.version++;
-  producerIncrementEpoch();
-  producerNotifyConsumers(node);
-}

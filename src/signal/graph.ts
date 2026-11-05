@@ -44,14 +44,6 @@ export function isInNotificationPhase(): boolean {
   return inNotificationPhase;
 }
 
-export interface Reactive {
-  [SIGNAL]: ReactiveNode;
-}
-
-export function isReactive(value: unknown): value is Reactive {
-  return (value as Partial<Reactive>)[SIGNAL] !== undefined;
-}
-
 export const REACTIVE_NODE: ReactiveNode = {
   version: 0 as Version,
   lastCleanEpoch: 0 as Version,
