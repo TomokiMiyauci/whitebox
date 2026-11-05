@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { defaultEquals, type ValueEqualityComparer } from "./equality.ts";
+import { type Equality } from "./equality.ts";
 import { throwInvalidWriteToSignalError } from "./errors.ts";
 import {
   producerAccessed,
@@ -30,7 +30,7 @@ declare const ngDevMode: boolean | undefined;
  */
 let postSignalSetFn: (() => void) | null = null;
 
-export interface SignalNode<T> extends ReactiveNode, ValueEqualityComparer<T> {
+export interface SignalNode<T> extends ReactiveNode, Equality<T> {
   value: T;
 }
 
@@ -97,7 +97,7 @@ export function signalUpdateFn<T>(
 export const SIGNAL_NODE: SignalNode<unknown> = /* @__PURE__ */ (() => {
   return {
     ...REACTIVE_NODE,
-    equal: defaultEquals,
+    equal: Object.is,
     value: undefined,
   };
 })();
