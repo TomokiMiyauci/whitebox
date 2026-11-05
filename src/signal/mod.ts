@@ -1,3 +1,3 @@
-import { Signal } from "signal-polyfill";
+import { Signal } from "./wrapper.ts";
 
 export { Signal };

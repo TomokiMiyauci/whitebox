@@ -2,8 +2,5 @@
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "jsr": "^0.14.3"
-  },
-  "dependencies": {
-    "signal-polyfill": "^0.2.2"
   }
 }
