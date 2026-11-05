@@ -1,3 +1,5 @@
+import { type Signal } from "./equality.ts";
+
 /**
  * @license
  * Copyright Google LLC All Rights Reserved.
@@ -21,13 +23,6 @@ type Version = number & { __brand: "Version" };
  */
 let epoch: Version = 1 as Version;
 
-/**
- * Symbol used to tell `Signal`s apart from other functions.
- *
- * This can be used to auto-unwrap signals in various cases, or to auto-wrap non-signal values.
- */
-export const SIGNAL = /* @__PURE__ */ Symbol("SIGNAL");
-
 export function setActiveConsumer(
   consumer: ReactiveNode | null,
 ): ReactiveNode | null {
@@ -44,7 +39,7 @@ export function isInNotificationPhase(): boolean {
   return inNotificationPhase;
 }
 
-export const REACTIVE_NODE: ReactiveNode = {
+export const REACTIVE_NODE: Omit<ReactiveNode, "wrapper"> = {
   version: 0 as Version,
   lastCleanEpoch: 0 as Version,
   dirty: false,
@@ -184,7 +179,7 @@ export interface ReactiveNode {
    * Optional extra data for embedder of this signal library.
    * Sent to various callbacks as the this value.
    */
-  wrapper?: any;
+  wrapper: Signal<unknown>;
 }
 
 interface ConsumerNode extends ReactiveNode {
@@ -325,7 +320,7 @@ export function producerUpdatesAllowed(): boolean {
 export function consumerMarkDirty(node: ReactiveNode): void {
   node.dirty = true;
   producerNotifyConsumers(node);
-  node.consumerMarkedDirty?.call(node.wrapper ?? node);
+  node.consumerMarkedDirty?.call(node.wrapper ?? null);
 }
 
 /**

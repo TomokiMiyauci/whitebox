@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { type Equality } from "./equality.ts";
+import { type Equality, type Signal } from "./equality.ts";
 import {
   consumerAfterComputation,
   consumerBeforeComputation,
@@ -14,7 +14,6 @@ import {
   producerUpdateValueVersion,
   REACTIVE_NODE,
   type ReactiveNode,
-  SIGNAL,
 } from "./graph.ts";
 
 /**
@@ -27,7 +26,7 @@ export interface ComputedNode<T> extends ReactiveNode, Equality<T> {
    * Current value of the computation, or one of the sentinel values above (`UNSET`, `COMPUTING`,
    * `ERROR`).
    */
-  value: T;
+  value: T | typeof UNSET;
 
   /**
    * If `value` is `ERRORED`, the error caught from the last computation attempt which will
@@ -38,12 +37,8 @@ export interface ComputedNode<T> extends ReactiveNode, Equality<T> {
   /**
    * The computation function which will produce a new value.
    */
-  computation?: () => T;
+  computation: () => T;
 }
-
-export type ComputedGetter<T> = (() => T) & {
-  [SIGNAL]: ComputedNode<T>;
-};
 
 export function computedGet<T>(node: ComputedNode<T>) {
   // Check if the value needs updating before returning it.
@@ -62,13 +57,62 @@ export function computedGet<T>(node: ComputedNode<T>) {
 /**
  * Create a computed signal which derives a reactive value from an expression.
  */
-export function createComputed<T>(computation: () => T): ComputedGetter<T> {
-  const node: ComputedNode<T> = Object.create(COMPUTED_NODE);
-  node.computation = computation;
+export function createComputed<T>(
+  computation: () => T,
+  self: Signal<T>,
+): ComputedNode<T> {
+  const node: ComputedNode<T> = {
+    ...REACTIVE_NODE,
+    value: UNSET,
+    dirty: true,
+    error: null,
+    equal: Object.is,
 
-  const computed = () => computedGet(node);
-  (computed as ComputedGetter<T>)[SIGNAL] = node;
-  return computed as unknown as ComputedGetter<T>;
+    producerMustRecompute(node: ComputedNode<unknown>): boolean {
+      // Force a recomputation if there's no current value, or if the current value is in the
+      // process of being calculated (which should throw an error).
+      return node.value === UNSET || node.value === COMPUTING;
+    },
+
+    producerRecomputeValue(node: ComputedNode<unknown>): void {
+      if (node.value === COMPUTING) {
+        // Our computation somehow led to a cyclic read of itself.
+        throw new Error("Detected cycle in computations.");
+      }
+
+      const oldValue = node.value;
+      node.value = COMPUTING;
+
+      const prevConsumer = consumerBeforeComputation(node);
+      let newValue: unknown;
+      let wasEqual = false;
+      try {
+        newValue = node.computation.call(node.wrapper);
+        const oldOk = oldValue !== UNSET && oldValue !== ERRORED;
+        wasEqual = oldOk && node.equal.call(node.wrapper, oldValue, newValue);
+      } catch (err) {
+        newValue = ERRORED;
+        node.error = err;
+      } finally {
+        consumerAfterComputation(node, prevConsumer);
+      }
+
+      if (wasEqual) {
+        // No change to `valueVersion` - old and new values are
+        // semantically equivalent.
+        node.value = oldValue;
+        return;
+      }
+
+      node.value = newValue;
+      node.version++;
+    },
+    wrapper: self,
+    computation,
+    consumerAllowSignalWrites: true,
+  };
+
+  return node;
 }
 
 /**
@@ -90,51 +134,3 @@ const COMPUTING = Symbol("COMPUTING");
  * Explicitly typed as `any` so we can use it as signal's value.
  */
 const ERRORED = Symbol("ERRORED");
-
-const COMPUTED_NODE: ComputedNode<any> = {
-  ...REACTIVE_NODE,
-  value: UNSET,
-  dirty: true,
-  error: null,
-  equal: Object.is,
-
-  producerMustRecompute(node: ComputedNode<unknown>): boolean {
-    // Force a recomputation if there's no current value, or if the current value is in the
-    // process of being calculated (which should throw an error).
-    return node.value === UNSET || node.value === COMPUTING;
-  },
-
-  producerRecomputeValue(node: ComputedNode<unknown>): void {
-    if (node.value === COMPUTING) {
-      // Our computation somehow led to a cyclic read of itself.
-      throw new Error("Detected cycle in computations.");
-    }
-
-    const oldValue = node.value;
-    node.value = COMPUTING;
-
-    const prevConsumer = consumerBeforeComputation(node);
-    let newValue: unknown;
-    let wasEqual = false;
-    try {
-      newValue = node.computation?.call(node.wrapper);
-      const oldOk = oldValue !== UNSET && oldValue !== ERRORED;
-      wasEqual = oldOk && node.equal.call(node.wrapper, oldValue, newValue);
-    } catch (err) {
-      newValue = ERRORED;
-      node.error = err;
-    } finally {
-      consumerAfterComputation(node, prevConsumer);
-    }
-
-    if (wasEqual) {
-      // No change to `valueVersion` - old and new values are
-      // semantically equivalent.
-      node.value = oldValue;
-      return;
-    }
-
-    node.value = newValue;
-    node.version++;
-  },
-};

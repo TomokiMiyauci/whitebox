@@ -17,7 +17,6 @@
 
 import { computedGet, createComputed, type ComputedNode } from "./computed.ts";
 import {
-  SIGNAL,
   getActiveConsumer,
   isInNotificationPhase,
   producerAccessed,
@@ -48,7 +47,7 @@ export namespace Signal {
     readonly [NODE]: SignalNode<T>;
 
     constructor(initialValue: T, options: SignalOptions<T> = {}) {
-      const node = createSignal<T>(initialValue);
+      const node = createSignal<T>(initialValue, this);
       this[NODE] = node;
       node.wrapper = this;
       if (options) {
@@ -83,11 +82,9 @@ export namespace Signal {
     // Create a Signal which evaluates to the value returned by the callback.
     // Callback is called with this signal as the parameter.
     constructor(computation: () => T, options?: SignalOptions<T>) {
-      const ref = createComputed<T>(computation);
-      const node = ref[SIGNAL];
-      node.consumerAllowSignalWrites = true;
+      const node = createComputed<T>(computation, this);
+
       this[NODE] = node;
-      node.wrapper = this;
       if (options) {
         const equals = options.equals;
         if (equals) {

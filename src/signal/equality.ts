@@ -6,3 +6,8 @@
 export interface Equality<T> {
   equal(a: T, b: T): boolean;
 }
+
+export interface Signal<T> {
+  // Get the value of the signal
+  get(): T;
+}

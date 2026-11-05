@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { type Equality } from "./equality.ts";
+import { type Equality, type Signal } from "./equality.ts";
 import { throwInvalidWriteToSignalError } from "./errors.ts";
 import {
   producerAccessed,
@@ -24,8 +24,16 @@ export interface SignalNode<T> extends ReactiveNode, Equality<T> {
 /**
  * Create a `Signal` that can be set or updated directly.
  */
-export function createSignal<T>(initialValue: T): SignalNode<T> {
-  const node: SignalNode<T> = Object.create(SIGNAL_NODE);
+export function createSignal<T>(
+  initialValue: T,
+  self: Signal<unknown>,
+): SignalNode<T> {
+  const node: SignalNode<T> = {
+    ...REACTIVE_NODE,
+    equal: Object.is,
+    wrapper: self,
+    value: initialValue,
+  };
   node.value = initialValue;
 
   return node;
@@ -48,9 +56,3 @@ export function signalSetFn<T>(node: SignalNode<T>, newValue: T) {
     producerNotifyConsumers(node);
   }
 }
-
-export const SIGNAL_NODE: SignalNode<unknown> = {
-  ...REACTIVE_NODE,
-  equal: Object.is,
-  value: undefined,
-};
