@@ -15,33 +15,20 @@ import {
   producerUpdatesAllowed,
   REACTIVE_NODE,
   type ReactiveNode,
-  SIGNAL,
 } from "./graph.ts";
 
 export interface SignalNode<T> extends ReactiveNode, Equality<T> {
   value: T;
 }
 
-export type SignalBaseGetter<T> = (() => T) & { readonly [SIGNAL]: unknown };
-
-// Note: Closure *requires* this to be an `interface` and not a type, which is why the
-// `SignalBaseGetter` type exists to provide the correct shape.
-export interface SignalGetter<T> extends SignalBaseGetter<T> {
-  readonly [SIGNAL]: SignalNode<T>;
-}
-
 /**
  * Create a `Signal` that can be set or updated directly.
  */
-export function createSignal<T>(initialValue: T): SignalGetter<T> {
+export function createSignal<T>(initialValue: T): SignalNode<T> {
   const node: SignalNode<T> = Object.create(SIGNAL_NODE);
   node.value = initialValue;
-  const getter = (() => {
-    producerAccessed(node);
-    return node.value;
-  }) as SignalGetter<T>;
-  (getter as any)[SIGNAL] = node;
-  return getter;
+
+  return node;
 }
 
 export function signalGetFn<T>(this: SignalNode<T>): T {

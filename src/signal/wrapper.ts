@@ -48,8 +48,7 @@ export namespace Signal {
     readonly [NODE]: SignalNode<T>;
 
     constructor(initialValue: T, options: SignalOptions<T> = {}) {
-      const ref = createSignal<T>(initialValue);
-      const node: SignalNode<T> = ref[SIGNAL];
+      const node = createSignal<T>(initialValue);
       this[NODE] = node;
       node.wrapper = this;
       if (options) {
