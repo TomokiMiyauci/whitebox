@@ -1,5 +1,14 @@
 import { Signal } from "./signal/mod.ts";
-import type { RegisterCleanup } from "./reactive_system/reactive.ts";
+
+/** Registers a cleanup callback for an effect. */
+export interface RegisterCleanup {
+  /**
+   * Registers a callback to clean up resources created during an action execution.
+   *
+   * @param callback The cleanup callback to execute before the next action execution or when the effect stops.
+   */
+  (callback: VoidFunction): void;
+}
 
 /**
  * Makes a class accessor reactive.

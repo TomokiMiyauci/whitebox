@@ -48,9 +48,6 @@ export {
   customElement,
   style,
   shadowHost,
+  type RegisterCleanup,
 } from "./decorator.ts";
 export { Signal } from "./signal/mod.ts";
-export {
-  type Action,
-  type RegisterCleanup,
-} from "./reactive_system/reactive.ts";
