@@ -49,7 +49,7 @@ export {
   style,
   shadowHost,
 } from "./decorator.ts";
-export { Effect, Signal } from "./global.ts";
+export { Signal } from "./signal/mod.ts";
 export {
   type Action,
   type RegisterCleanup,
