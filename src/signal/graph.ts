@@ -246,10 +246,10 @@ export function producerAccessed(node: ReactiveNode): void {
     // `activeConsumer.producerNode` directly. However, if `activeConsumer` is live, then we need
     // to remove it from the stale producer's `liveConsumer`s.
     if (consumerIsLive(activeConsumer)) {
-      const staleProducer = activeConsumer.producerNode[idx];
+      const staleProducer = activeConsumer.producerNode[idx]!;
       producerRemoveLiveConsumerAtIndex(
         staleProducer,
-        activeConsumer.producerIndexOfThis[idx],
+        activeConsumer.producerIndexOfThis[idx]!,
       );
 
       // At this point, the only record of `staleProducer` is the reference at
@@ -383,8 +383,8 @@ export function consumerAfterComputation(
     // which weren't dependencies after the recomputation.
     for (let i = node.nextProducerIndex; i < node.producerNode.length; i++) {
       producerRemoveLiveConsumerAtIndex(
-        node.producerNode[i],
-        node.producerIndexOfThis[i],
+        node.producerNode[i]!,
+        node.producerIndexOfThis[i]!,
       );
     }
   }
@@ -408,7 +408,7 @@ export function consumerPollProducersForChange(node: ReactiveNode): boolean {
 
   // Poll producers for change.
   for (let i = 0; i < node.producerNode.length; i++) {
-    const producer = node.producerNode[i];
+    const producer = node.producerNode[i]!;
     const seenVersion = node.producerLastReadVersion[i];
 
     // First check the versions. A mismatch means that the producer's value is known to have
@@ -440,8 +440,8 @@ export function consumerDestroy(node: ReactiveNode): void {
     // Drop all connections from the graph to this node.
     for (let i = 0; i < node.producerNode.length; i++) {
       producerRemoveLiveConsumerAtIndex(
-        node.producerNode[i],
-        node.producerIndexOfThis[i],
+        node.producerNode[i]!,
+        node.producerIndexOfThis[i]!,
       );
     }
   }
@@ -474,7 +474,7 @@ function producerAddLiveConsumer(
     // When going from 0 to 1 live consumers, we become a live consumer to our producers.
     for (let i = 0; i < node.producerNode.length; i++) {
       node.producerIndexOfThis[i] = producerAddLiveConsumer(
-        node.producerNode[i],
+        node.producerNode[i]!,
         node,
         i,
       );
@@ -511,8 +511,8 @@ export function producerRemoveLiveConsumerAtIndex(
     node.unwatched?.call(node.wrapper);
     for (let i = 0; i < node.producerNode.length; i++) {
       producerRemoveLiveConsumerAtIndex(
-        node.producerNode[i],
-        node.producerIndexOfThis[i],
+        node.producerNode[i]!,
+        node.producerIndexOfThis[i]!,
       );
     }
   }
@@ -520,8 +520,8 @@ export function producerRemoveLiveConsumerAtIndex(
   // Move the last value of `liveConsumers` into `idx`. Note that if there's only a single
   // live consumer, this is a no-op.
   const lastIdx = node.liveConsumerNode.length - 1;
-  node.liveConsumerNode[idx] = node.liveConsumerNode[lastIdx];
-  node.liveConsumerIndexOfThis[idx] = node.liveConsumerIndexOfThis[lastIdx];
+  node.liveConsumerNode[idx] = node.liveConsumerNode[lastIdx]!;
+  node.liveConsumerIndexOfThis[idx] = node.liveConsumerIndexOfThis[lastIdx]!;
 
   // Truncate the array.
   node.liveConsumerNode.length--;

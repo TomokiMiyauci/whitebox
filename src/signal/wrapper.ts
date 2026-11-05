@@ -99,12 +99,9 @@ export namespace Signal {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type AnySignal<T = any> = State<T> | Computed<T>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type AnySink = Computed<any> | subtle.Watcher;
 
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   export namespace subtle {
     // Run a callback with all tracking disabled (even for nested computed).
     export function untrack<T>(cb: () => T): T {
@@ -182,24 +179,24 @@ export namespace Signal {
         assertConsumerNode(node);
 
         for (let i = node.producerNode.length - 1; i >= 0; i--) {
-          if (signals.includes(node.producerNode[i].wrapper)) {
+          if (signals.includes(node.producerNode[i]!.wrapper)) {
             producerRemoveLiveConsumerAtIndex(
-              node.producerNode[i],
-              node.producerIndexOfThis[i],
+              node.producerNode[i]!,
+              node.producerIndexOfThis[i]!,
             );
 
             // Logic copied from producerRemoveLiveConsumerAtIndex, but reversed
             const lastIdx = node.producerNode!.length - 1;
-            node.producerNode![i] = node.producerNode![lastIdx];
-            node.producerIndexOfThis[i] = node.producerIndexOfThis[lastIdx];
+            node.producerNode![i] = node.producerNode![lastIdx]!;
+            node.producerIndexOfThis[i] = node.producerIndexOfThis[lastIdx]!;
 
             node.producerNode.length--;
             node.producerIndexOfThis.length--;
             node.nextProducerIndex--;
 
             if (i < node.producerNode.length) {
-              const idxConsumer = node.producerIndexOfThis[i];
-              const producer = node.producerNode[i];
+              const idxConsumer = node.producerIndexOfThis[i]!;
+              const producer = node.producerNode[i]!;
               assertProducerNode(producer);
               producer.liveConsumerIndexOfThis[idxConsumer] = i;
             }
