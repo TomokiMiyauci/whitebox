@@ -220,8 +220,8 @@ export namespace Signal {
       }
     }
 
-    export function currentComputed(): Computed<unknown> | undefined {
-      return getActiveConsumer()?.wrapper;
+    export function currentComputed(): Computed<unknown> | null {
+      return getActiveConsumer()?.wrapper ?? null;
     }
 
     // Hooks to observe being watched or no longer watched
