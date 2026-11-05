@@ -18,14 +18,6 @@ import {
   SIGNAL,
 } from "./graph.ts";
 
-/**
- * If set, called after `WritableSignal`s are updated.
- *
- * This hook can be used to achieve various effects, such as running effects synchronously as part
- * of setting a signal.
- */
-let postSignalSetFn: (() => void) | null = null;
-
 export interface SignalNode<T> extends ReactiveNode, Equality<T> {
   value: T;
 }
@@ -52,14 +44,6 @@ export function createSignal<T>(initialValue: T): SignalGetter<T> {
   return getter;
 }
 
-export function setPostSignalSetFn(
-  fn: (() => void) | null,
-): (() => void) | null {
-  const prev = postSignalSetFn;
-  postSignalSetFn = fn;
-  return prev;
-}
-
 export function signalGetFn<T>(this: SignalNode<T>): T {
   producerAccessed(this);
   return this.value;
@@ -76,17 +60,6 @@ export function signalSetFn<T>(node: SignalNode<T>, newValue: T) {
   }
 }
 
-export function signalUpdateFn<T>(
-  node: SignalNode<T>,
-  updater: (value: T) => T,
-): void {
-  if (!producerUpdatesAllowed()) {
-    throwInvalidWriteToSignalError();
-  }
-
-  signalSetFn(node, updater(node.value));
-}
-
 export const SIGNAL_NODE: SignalNode<unknown> = {
   ...REACTIVE_NODE,
   equal: Object.is,
@@ -97,5 +70,4 @@ function signalValueChanged<T>(node: SignalNode<T>): void {
   node.version++;
   producerIncrementEpoch();
   producerNotifyConsumers(node);
-  postSignalSetFn?.();
 }
