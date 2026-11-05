@@ -42,7 +42,7 @@ export namespace Signal {
   export class State<T> {
     readonly [NODE]: SignalNode<T>;
 
-    constructor(initialValue: T, options: Signal.Options<T> = {}) {
+    constructor(initialValue: T, options: SignalOptions<T> = {}) {
       const ref = createSignal<T>(initialValue);
       const node: SignalNode<T> = ref[SIGNAL];
       this[NODE] = node;
@@ -78,7 +78,7 @@ export namespace Signal {
 
     // Create a Signal which evaluates to the value returned by the callback.
     // Callback is called with this signal as the parameter.
-    constructor(computation: () => T, options?: Signal.Options<T>) {
+    constructor(computation: () => T, options?: SignalOptions<T>) {
       const ref = createComputed<T>(computation);
       const node = ref[SIGNAL];
       node.consumerAllowSignalWrites = true;
@@ -221,7 +221,7 @@ export namespace Signal {
     export const unwatched = Symbol("unwatched");
   }
 
-  export interface Options<T> {
+  export interface SignalOptions<T> {
     // Custom comparison function between old and new value. Default: Object.is.
     // The signal is passed in as an optionally-used third parameter for context.
     equals?: (this: AnySignal<T>, t: T, t2: T) => boolean;
