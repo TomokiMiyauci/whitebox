@@ -18,10 +18,6 @@ import {
   SIGNAL,
 } from "./graph.ts";
 
-// Required as the signals library is in a separate package, so we need to explicitly ensure the
-// global `ngDevMode` type is defined.
-declare const ngDevMode: boolean | undefined;
-
 /**
  * If set, called after `WritableSignal`s are updated.
  *
@@ -91,16 +87,11 @@ export function signalUpdateFn<T>(
   signalSetFn(node, updater(node.value));
 }
 
-// Note: Using an IIFE here to ensure that the spread assignment is not considered
-// a side-effect, ending up preserving `COMPUTED_NODE` and `REACTIVE_NODE`.
-// TODO: remove when https://github.com/evanw/esbuild/issues/3392 is resolved.
-export const SIGNAL_NODE: SignalNode<unknown> = /* @__PURE__ */ (() => {
-  return {
-    ...REACTIVE_NODE,
-    equal: Object.is,
-    value: undefined,
-  };
-})();
+export const SIGNAL_NODE: SignalNode<unknown> = {
+  ...REACTIVE_NODE,
+  equal: Object.is,
+  value: undefined,
+};
 
 function signalValueChanged<T>(node: SignalNode<T>): void {
   node.version++;
