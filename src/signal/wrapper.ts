@@ -37,6 +37,11 @@ import {
 
 const NODE: unique symbol = Symbol("node");
 
+export interface Signal<T> {
+  // Get the value of the signal
+  get(): T;
+}
+
 export namespace Signal {
   // A read-write Signal
   export class State<T> {
@@ -99,9 +104,6 @@ export namespace Signal {
     }
   }
 
-  type AnySignal<T = any> = State<T> | Computed<T>;
-  type AnySink = Computed<any> | subtle.Watcher;
-
   export namespace subtle {
     // Run a callback with all tracking disabled (even for nested computed).
     export function untrack<T>(cb: () => T): T {
@@ -118,26 +120,32 @@ export namespace Signal {
 
     // Returns ordered list of all signals which this one referenced
     // during the last time it was evaluated
-    export function introspectSources(sink: AnySink): AnySignal[] {
+    export function introspectSources(
+      sink: Computed<unknown> | Watcher,
+    ): (State<unknown> | Computed<unknown>)[] {
       return sink[NODE].producerNode?.map((n) => n.wrapper) ?? [];
     }
 
     // Returns the subset of signal sinks which recursively
     // lead to an Effect which has not been disposed
     // Note: Only watched Computed signals will be in this list.
-    export function introspectSinks(signal: AnySignal): AnySink[] {
+    export function introspectSinks(
+      signal: State<unknown> | Computed<unknown>,
+    ): (Computed<unknown> | Watcher)[] {
       return signal[NODE].liveConsumerNode?.map((n) => n.wrapper) ?? [];
     }
 
     // True iff introspectSinks() is non-empty
-    export function hasSinks(signal: AnySignal): boolean {
+    export function hasSinks(
+      signal: State<unknown> | Computed<unknown>,
+    ): boolean {
       const liveConsumerNode = signal[NODE].liveConsumerNode;
       if (!liveConsumerNode) return false;
       return liveConsumerNode.length > 0;
     }
 
     // True iff introspectSources() is non-empty
-    export function hasSources(signal: AnySink): boolean {
+    export function hasSources(signal: Computed<unknown> | Watcher): boolean {
       const producerNode = signal[NODE].producerNode;
       if (!producerNode) return false;
       return producerNode.length > 0;
@@ -163,7 +171,7 @@ export namespace Signal {
       // notify callback next time any signal in the set (or one of its dependencies) changes.
       // Can be called with no arguments just to reset the "notified" state, so that
       // the notify callback will be invoked again.
-      watch(...signals: AnySignal[]): void {
+      watch(...signals: Signal<unknown>[]): void {
         const node = this[NODE];
         node.dirty = false; // Give the watcher a chance to trigger again
         const prev = setActiveConsumer(node);
@@ -174,7 +182,7 @@ export namespace Signal {
       }
 
       // Remove these signals from the watched set (e.g., for an effect which is disposed)
-      unwatch(...signals: AnySignal[]): void {
+      unwatch(...signals: Signal<unknown>[]): void {
         const node = this[NODE];
         assertConsumerNode(node);
 
@@ -206,13 +214,13 @@ export namespace Signal {
 
       // Returns the set of computeds in the Watcher's set which are still yet
       // to be re-evaluated
-      getPending(): Computed<any>[] {
+      getPending(): Computed<unknown>[] {
         const node = this[NODE];
         return node.producerNode!.filter((n) => n.dirty).map((n) => n.wrapper);
       }
     }
 
-    export function currentComputed(): Computed<any> | undefined {
+    export function currentComputed(): Computed<unknown> | undefined {
       return getActiveConsumer()?.wrapper;
     }
 
@@ -224,12 +232,12 @@ export namespace Signal {
   export interface SignalOptions<T> {
     // Custom comparison function between old and new value. Default: Object.is.
     // The signal is passed in as an optionally-used third parameter for context.
-    equals?: (this: AnySignal<T>, t: T, t2: T) => boolean;
+    equals?: (this: Signal<T>, t: T, t2: T) => boolean;
 
     // Callback called when hasSinks becomes true, if it was previously false
-    [Signal.subtle.watched]?: (this: AnySignal<T>) => void;
+    [Signal.subtle.watched]?: (this: Signal<T>) => void;
 
     // Callback called whenever hasSinks becomes false, if it was previously true
-    [Signal.subtle.unwatched]?: (this: AnySignal<T>) => void;
+    [Signal.subtle.unwatched]?: (this: Signal<T>) => void;
   }
 }
