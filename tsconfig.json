@@ -13,8 +13,7 @@
     "noImplicitOverride": true,
     "strictBindCallApply": true,
     "strictFunctionTypes": true,
-    "strictPropertyInitialization": true,
-    "skipLibCheck": true
+    "strictPropertyInitialization": true
   },
   "exclude": ["src/signal/signal_polyfill/**"]
 }

@@ -1,4 +1,4 @@
-import { WeakBiMap } from "bim";
+import { WeakBiMap } from "./map.ts";
 import { Signal as Ponyfill } from "signal-polyfill";
 
 /**
