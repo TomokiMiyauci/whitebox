@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.3.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.2.0...v0.3.0) (2026-11-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* change signal API to strict proposal.
+* update currentComputed function to return null instead of undefined
+* rename signal option interface
+* remove Action interface from public API
+* remove un-official API from signal
+* switch to proposal signal implement, remove Effect from public API
+
+### Features
+
+* add bim dependency and refactor signal implementation ([237251e](https://github.com/TomokiMiyauci/whitebox/commit/237251ea8dad28cfe49e6a8ad053e53a32810bd6))
+* change signal API to strict proposal. ([c88f254](https://github.com/TomokiMiyauci/whitebox/commit/c88f2547e689cb3e2553d3a77b70cddfe0ffaf38))
+* refine Signal interface and update related types for better clarity ([47805a8](https://github.com/TomokiMiyauci/whitebox/commit/47805a80746c6f22b17ee0f68210eb8d0306249b))
+* remove Action interface from public API ([bddd07c](https://github.com/TomokiMiyauci/whitebox/commit/bddd07c651d5ce31bddfafa1a09f73906d88eb2f))
+* remove un-official API from signal ([1da16f4](https://github.com/TomokiMiyauci/whitebox/commit/1da16f4a3242004fca8a1230dac584b5d066d82a))
+* rename signal option interface ([619729b](https://github.com/TomokiMiyauci/whitebox/commit/619729b2874ce693626a471487a61e78f53e4d42))
+* switch to proposal signal implement, remove Effect from public API ([78d9d33](https://github.com/TomokiMiyauci/whitebox/commit/78d9d3352937f718f0edc7fe4d8270d1b2702399))
+* update currentComputed function to return null instead of undefined ([1eeb2a4](https://github.com/TomokiMiyauci/whitebox/commit/1eeb2a480f4ae8ccf05ff04aca21d376c6164815))
+
+
+### Bug Fixes
+
+* add error handling for invalid sink in toPublicSink function ([ab9dea9](https://github.com/TomokiMiyauci/whitebox/commit/ab9dea959b4a86b9e5309ccb94de868a9825d518))
+
 ## [0.2.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.1.0...v0.2.0) (2026-11-04)
 
 
