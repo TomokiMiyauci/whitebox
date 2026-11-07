@@ -1,20 +1,10 @@
+import { WeakBiMap } from "bim";
 import { Signal as Ponyfill } from "signal-polyfill";
 
 export interface Signal<T> {
   // Get the value of the signal
   get(): T;
 }
-
-// Internal implementation mappings
-type PonyfillSignal = Ponyfill.State<unknown> | Ponyfill.Computed<unknown>;
-
-type PublicSignal = Signal.State<unknown> | Signal.Computed<unknown>;
-
-const signalImpls = new WeakMap<object, PonyfillSignal>();
-const signalWrappers = new WeakMap<object, PublicSignal>();
-
-const watcherImpls = new WeakMap<object, Ponyfill.subtle.Watcher>();
-const watcherWrappers = new WeakMap<object, Signal.subtle.Watcher>();
 
 export namespace Signal {
   /**
@@ -34,7 +24,7 @@ export namespace Signal {
         toPonyfillOptions(this, options),
       );
 
-      registerSignal(this, this.#impl);
+      nodes.set(this, this.#impl);
     }
 
     /**
@@ -53,6 +43,9 @@ export namespace Signal {
     }
   }
 
+  /**
+   * A read-only Signal derived from other signals
+   */
   export class Computed<T> implements Signal<T> {
     #impl: Ponyfill.Computed<T>;
 
@@ -68,7 +61,7 @@ export namespace Signal {
         toPonyfillOptions(this, options),
       );
 
-      registerSignal(this, this.#impl);
+      nodes.set(this, this.#impl);
     }
 
     get(): T {
@@ -156,8 +149,7 @@ export namespace Signal {
           notify.call(this);
         });
 
-        watcherImpls.set(this, this.#impl);
-        watcherWrappers.set(this.#impl, this);
+        nodes.set(this, this.#impl);
       }
 
       /**
@@ -205,18 +197,55 @@ export namespace Signal {
   }
 }
 
-// Internal conversion functions
+// Internal implementation mappings
+type PonyfillSignal = Ponyfill.State<unknown> | Ponyfill.Computed<unknown>;
 
-function registerSignal(wrapper: PublicSignal, impl: PonyfillSignal): void {
-  signalImpls.set(wrapper, impl);
-  signalWrappers.set(impl, wrapper);
+type PonyfillNode = PonyfillSignal | Ponyfill.subtle.Watcher;
+
+type PublicSignal = Signal.State<unknown> | Signal.Computed<unknown>;
+
+type PublicNode = PublicSignal | Signal.subtle.Watcher;
+
+const nodes = new WeakBiMap<PublicNode, PonyfillNode>();
+
+// Internal type guards
+
+function isPublicSignal(value: unknown): value is PublicSignal {
+  return value instanceof Signal.State || value instanceof Signal.Computed;
 }
 
-function toPonyfillSignal(signal: Signal<unknown>): PonyfillSignal {
-  const impl = signalImpls.get(signal);
+function isPublicSink(
+  value: unknown,
+): value is Signal.Computed<unknown> | Signal.subtle.Watcher {
+  return (
+    value instanceof Signal.Computed || value instanceof Signal.subtle.Watcher
+  );
+}
 
-  if (!impl) {
+function isPonyfillSignal(value: PonyfillNode): value is PonyfillSignal {
+  return value instanceof Ponyfill.State || value instanceof Ponyfill.Computed;
+}
+
+function isPonyfillSink(
+  value: PonyfillNode,
+): value is Ponyfill.Computed<unknown> | Ponyfill.subtle.Watcher {
+  return (
+    value instanceof Ponyfill.Computed ||
+    value instanceof Ponyfill.subtle.Watcher
+  );
+}
+
+// Internal registration and conversion functions
+
+function toPonyfillSignal(signal: Signal<unknown>): PonyfillSignal {
+  if (!isPublicSignal(signal)) {
     throw new TypeError("Expected a Signal instance");
+  }
+
+  const impl = nodes.get(signal);
+
+  if (!impl || !isPonyfillSignal(impl)) {
+    throw new TypeError("Expected a State or Computed instance");
   }
 
   return impl;
@@ -225,19 +254,23 @@ function toPonyfillSignal(signal: Signal<unknown>): PonyfillSignal {
 function toPonyfillSink(
   sink: Signal.Computed<unknown> | Signal.subtle.Watcher,
 ): Ponyfill.Computed<unknown> | Ponyfill.subtle.Watcher {
-  const impl = signalImpls.get(sink) ?? watcherImpls.get(sink);
-
-  if (!impl) {
+  if (!isPublicSink(sink)) {
     throw new TypeError("Expected a Computed or Watcher instance");
   }
 
-  return impl as Ponyfill.Computed<unknown> | Ponyfill.subtle.Watcher;
+  const impl = nodes.get(sink);
+
+  if (!impl || !isPonyfillSink(impl)) {
+    throw new TypeError("Expected a Computed or Watcher instance");
+  }
+
+  return impl;
 }
 
 function toPublicSignal(impl: PonyfillSignal): PublicSignal {
-  const wrapper = signalWrappers.get(impl);
+  const wrapper = nodes.getKey(impl);
 
-  if (!wrapper) {
+  if (!wrapper || !isPublicSignal(wrapper)) {
     throw new TypeError("Unknown internal Signal");
   }
 
@@ -247,14 +280,10 @@ function toPublicSignal(impl: PonyfillSignal): PublicSignal {
 function toPublicSink(
   impl: Ponyfill.Computed<unknown> | Ponyfill.subtle.Watcher,
 ): Signal.Computed<unknown> | Signal.subtle.Watcher {
-  const wrapper = signalWrappers.get(impl) ?? watcherWrappers.get(impl);
+  const wrapper = nodes.getKey(impl);
 
-  if (!wrapper) {
+  if (!wrapper || !isPublicSink(wrapper)) {
     throw new TypeError("Unknown internal sink");
-  }
-
-  if (wrapper instanceof Signal.State) {
-    throw new Error("Invalid sink");
   }
 
   return wrapper;

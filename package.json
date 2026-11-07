@@ -3,6 +3,7 @@
     "@types/bun": "^1.4.4"
   },
   "dependencies": {
+    "bim": "^1.3.3",
     "signal-polyfill": "^0.2.2"
   },
   "scripts": {
