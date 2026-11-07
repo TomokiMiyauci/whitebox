@@ -253,6 +253,10 @@ function toPublicSink(
     throw new TypeError("Unknown internal sink");
   }
 
+  if (wrapper instanceof Signal.State) {
+    throw new Error("Invalid sink");
+  }
+
   return wrapper;
 }
 
