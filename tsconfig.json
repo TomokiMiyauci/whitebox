@@ -6,7 +6,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
-    "erasableSyntaxOnly": true,
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
@@ -15,5 +14,6 @@
     "strictBindCallApply": true,
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true
-  }
+  },
+  "exclude": ["src/signal/signal_polyfill/**"]
 }
