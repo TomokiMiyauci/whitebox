@@ -1,0 +1,3 @@
+[submodule "src/signal/signal_polyfill"]
+	path = src/signal/signal_polyfill
+	url = https://github.com/proposal-signals/signal-polyfill.git
