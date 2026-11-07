@@ -49,6 +49,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Apply patch
+        run: bun run apply-patch
+
       - name: Install dependencies
         run: bun install
 
