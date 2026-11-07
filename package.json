@@ -4,5 +4,8 @@
   },
   "dependencies": {
     "signal-polyfill": "^0.2.2"
+  },
+  "scripts": {
+    "apply-patch": "git -C src/signal/signal_polyfill apply src/signal/patches/signal_polyfill.patch"
   }
 }
