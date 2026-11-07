@@ -1,22 +1,28 @@
 import { WeakBiMap } from "bim";
 import { Signal as Ponyfill } from "signal-polyfill";
 
+/**
+ * A reactive value.
+ */
 export interface Signal<T> {
-  // Get the value of the signal
+  /**
+   * Returns the current value of the signal.
+   */
   get(): T;
 }
 
 export namespace Signal {
   /**
-   * A read-write Signal
+   * A mutable signal that holds a value.
    */
   export class State<T> implements Signal<T> {
     #impl: Ponyfill.State<T>;
 
     /**
-     * Create a state Signal starting with the value {@link initialValue}
-     * @param initialValue
-     * @param options
+     * Creates a state signal.
+     *
+     * @param initialValue The initial value of the signal.
+     * @param options The options for configuring the signal.
      */
     constructor(initialValue: T, options: SignalOptions<T> = {}) {
       this.#impl = new Ponyfill.State(
@@ -28,15 +34,19 @@ export namespace Signal {
     }
 
     /**
-     * Get the value of the signal
+     * Returns the current value of the signal.
      */
     get(): T {
       return this.#impl.get();
     }
 
     /**
-     * Set the state Signal value to {@link t}.
-     * @param t
+     * Sets the value of the signal.
+     *
+     * Dependent computations are invalidated when the new value is not
+     * considered equal to the current value.
+     *
+     * @param t The new value.
      */
     set(t: T): void {
       this.#impl.set(t);
@@ -44,16 +54,20 @@ export namespace Signal {
   }
 
   /**
-   * A read-only Signal derived from other signals
+   * A read-only signal whose value is derived from other signals.
+   *
+   * Its dependencies are tracked automatically when its callback is evaluated.
    */
   export class Computed<T> implements Signal<T> {
     #impl: Ponyfill.Computed<T>;
 
     /**
-     * Create a Signal which evaluates to the value returned by the callback.
-     * Callback is called with this signal as the this value.
-     * @param cb
-     * @param options
+     * Creates a computed signal.
+     *
+     * The callback is invoked with this computed signal as its `this` value.
+     *
+     * @param cb The callback that computes the signal's value.
+     * @param options The options for configuring the signal.
      */
     constructor(cb: (this: Computed<T>) => T, options: SignalOptions<T> = {}) {
       this.#impl = new Ponyfill.Computed(
@@ -64,22 +78,32 @@ export namespace Signal {
       nodes.set(this, this.#impl);
     }
 
+    /**
+     * Returns the current value of the signal.
+     */
     get(): T {
       return this.#impl.get();
     }
   }
 
+  /**
+   * Low-level APIs for controlling and inspecting signal dependency tracking.
+   */
   export namespace subtle {
     /**
-     * Run a callback with all tracking disabled
-     * @param cb
+     * Executes a callback without tracking signal reads.
+     *
+     * @param cb The callback to execute.
+     * @returns The callback's return value.
      */
     export function untrack<T>(cb: () => T): T {
       return Ponyfill.subtle.untrack(cb);
     }
 
     /**
-     * Get the current computed signal which is tracking any signal reads, if any.
+     * Returns the computed signal currently being evaluated.
+     *
+     * @returns The current computed signal, or `null` if none is being evaluated.
      */
     export function currentComputed(): Computed<unknown> | null {
       const computed = Ponyfill.subtle.currentComputed();
@@ -88,9 +112,11 @@ export namespace Signal {
     }
 
     /**
-     * Returns ordered list of all signals which this one referenced
-     * during the last time it was evaluated.
-     * For a Watcher, lists the set of signals which it is watching.
+     * Returns the signals referenced by a computed signal during its last evaluation
+     * or watched by a watcher.
+     *
+     * @param sink The computed signal or watcher to inspect.
+     * @returns The source signals of the specified sink.
      */
     export function introspectSources(
       sink: Computed<unknown> | Watcher,
@@ -101,10 +127,10 @@ export namespace Signal {
     }
 
     /**
-     * Returns the Watchers that this signal is contained in, plus any
-     * Computed signals which read this signal last time they were evaluated,
-     * if that computed signal is (recursively) watched.
-     * @param source
+     * Returns the live sinks that depend on a signal.
+     *
+     * @param source The signal to inspect.
+     * @returns The sinks that depend on the specified signal.
      */
     export function introspectSinks(
       source: State<unknown> | Computed<unknown>,
@@ -115,9 +141,12 @@ export namespace Signal {
     }
 
     /**
-     * True if this signal is "live", in that it is watched by a Watcher,
-     * or it is read by a Computed signal which is (recursively) live.
-     * @param source
+     * Determines whether a signal has any live dependents.
+     *
+     * A signal is live if it is watched by a watcher or is a dependency
+     * of a computed signal that is recursively watched.
+     *
+     * @param source The signal to inspect.
      */
     export function hasSinks(
       source: State<unknown> | Computed<unknown>,
@@ -126,23 +155,27 @@ export namespace Signal {
     }
 
     /**
-     * True if this element is "reactive", in that it depends
-     * on some other signal. A Computed where hasSources is false
-     * will always return the same constant.
-     * @param sink
+     * Determines whether a computed signal or watcher has any sources.
+     *
+     * @param sink The computed signal or watcher to inspect.
      */
     export function hasSources(sink: Computed<unknown> | Watcher): boolean {
       return Ponyfill.subtle.hasSources(toPonyfillSink(sink));
     }
 
+    /**
+     * Observes signals and notifies when any of them or their dependencies change.
+     */
     export class Watcher {
       #impl: Ponyfill.subtle.Watcher;
 
       /**
-       * When a (recursive) source of Watcher is written to, call this callback,
-       * if it hasn't already been called since the last `watch` call.
-       * No signals may be read or written during the notify.
-       * @param notify
+       * Creates a watcher.
+       *
+       * The notification callback is invoked at most once between calls to {@link watch}.
+       * Signal reads and writes are not allowed during notification.
+       *
+       * @param notify The callback to invoke when a watched signal changes.
        */
       constructor(notify: (this: Watcher) => void) {
         this.#impl = new Ponyfill.subtle.Watcher(() => {
@@ -153,46 +186,67 @@ export namespace Signal {
       }
 
       /**
-       * Add these signals to the Watcher's set, and set the watcher to run its
-       * notify callback next time any signal in the set (or one of its dependencies) changes.
-       * Can be called with no arguments just to reset the "notified" state.
-       * @param signals
+       * Adds signals to the watched set.
+       *
+       * Calling this method without arguments resets the notification state
+       * without changing the watched set.
+       *
+       * @param signals The signals to watch.
        */
       watch(...signals: Signal<unknown>[]): void {
         this.#impl.watch(...signals.map(toPonyfillSignal));
       }
 
       /**
-       * Remove these signals from the watched set.
-       * @param signals
+       * Removes signals from the watched set.
+       *
+       * @param signals The signals to stop watching.
        */
       unwatch(...signals: Signal<unknown>[]): void {
         this.#impl.unwatch(...signals.map(toPonyfillSignal));
       }
 
       /**
-       * Returns the set of sources in the Watcher's set which are still dirty,
-       * or are Computed signals with a source which is dirty or pending.
+       * Returns the source signals that are still dirty or pending.
        */
       getPending(): Signal<unknown>[] {
         return this.#impl.getPending().map(toPublicSignal);
       }
     }
 
-    // Hooks to observe being watched or no longer watched
+    /**
+     * Called when a signal transitions from having no sinks to having at least one sink.
+     */
     export const watched = Symbol("watched");
+
+    /**
+     * Called when a signal transitions from having at least one sink to having no sinks.
+     */
     export const unwatched = Symbol("unwatched");
   }
 
+  /**
+   * Options for configuring a signal.
+   */
   export interface SignalOptions<T> {
-    // Custom comparison function between old and new value. Default: Object.is.
-    // The signal is passed in as an optionally-used third parameter for context.
+    /**
+     * Compares two values for equality.
+     *
+     * @default Object.is
+     * @param t The current value.
+     * @param t2 The new value.
+     * @returns `true` if the values are considered equal.
+     */
     equals?: (this: Signal<T>, t: T, t2: T) => boolean;
 
-    // Callback called when hasSinks becomes true, if it was previously false
+    /**
+     * Called when the signal transitions from having no sinks to having at least one sink.
+     */
     [Signal.subtle.watched]?: (this: Signal<T>) => void;
 
-    // Callback called whenever hasSinks becomes false, if it was previously true
+    /**
+     * Called when the signal transitions from having at least one sink to having no sinks.
+     */
     [Signal.subtle.unwatched]?: (this: Signal<T>) => void;
   }
 }
