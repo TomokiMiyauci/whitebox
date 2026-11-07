@@ -184,3 +184,56 @@ describe("effect", () => {
     expect(action.mock.calls).toEqual([[0], [0], [1], [2]]);
   });
 });
+
+describe("reactive", () => {
+  it("should preserve the initial value", () => {
+    class Counter {
+      @reactive accessor count = 10;
+    }
+
+    const counter = new Counter();
+
+    expect(counter.count).toBe(10);
+  });
+
+  it("should return the updated value", () => {
+    class Counter {
+      @reactive accessor count = 0;
+    }
+
+    const counter = new Counter();
+
+    counter.count = 10;
+
+    expect(counter.count).toBe(10);
+  });
+
+  it("should maintain independent state for each instance", () => {
+    class Counter {
+      @reactive accessor count = 0;
+    }
+
+    const first = new Counter();
+    const second = new Counter();
+
+    first.count = 10;
+
+    expect(first.count).toBe(10);
+    expect(second.count).toBe(0);
+  });
+
+  it("should support multiple reactive accessors", () => {
+    class Counter {
+      @reactive accessor count = 0;
+      @reactive accessor name = "counter";
+    }
+
+    const counter = new Counter();
+
+    counter.count = 10;
+    counter.name = "updated";
+
+    expect(counter.count).toBe(10);
+    expect(counter.name).toBe("updated");
+  });
+});
