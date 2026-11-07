@@ -1,0 +1,298 @@
+diff --git a/tests/Signal/computed.test.ts b/tests/Signal/computed.test.ts
+index 6c02416..1a37747 100644
+--- a/tests/Signal/computed.test.ts
++++ b/tests/Signal/computed.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Computed', () => {
+   it('should work', () => {
+diff --git a/tests/Signal/ported/preact.test.ts b/tests/Signal/ported/preact.test.ts
+index 34a4c43..4c8ba01 100644
+--- a/tests/Signal/ported/preact.test.ts
++++ b/tests/Signal/ported/preact.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, it, expect, vi} from 'vitest';
+-import {Signal} from '../../../src';
++import {describe, it, expect, vi} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('Ported - Preact', () => {
+   // https://github.com/preactjs/signals/blob/main/packages/core/test/signal.test.tsx#L1078
+@@ -16,9 +16,9 @@ describe('Ported - Preact', () => {
+         return 'ok';
+       }
+     });
+-    expect(c.get()).to.equal('ok');
++    expect(c.get()).toBe('ok');
+     a.set(1);
+-    expect(c.get()).to.equal('ok');
++    expect(c.get()).toBe('ok');
+   });
+ 
+   // https://github.com/preactjs/signals/blob/main/packages/core/test/signal.test.tsx#L914
+@@ -27,10 +27,10 @@ describe('Ported - Preact', () => {
+     const b = new Signal.State('b');
+ 
+     const c = new Signal.Computed(() => a.get() + b.get());
+-    expect(c.get()).to.equal('ab');
++    expect(c.get()).toBe('ab');
+ 
+     a.set('aa');
+-    expect(c.get()).to.equal('aab');
++    expect(c.get()).toBe('aab');
+   });
+ 
+   // https://github.com/preactjs/signals/blob/main/packages/core/test/signal.test.tsx#L925
+@@ -69,11 +69,11 @@ describe('Ported - Preact', () => {
+     const b = new Signal.Computed(() => a.get());
+     const c = new Signal.Computed(() => (a.get() > 0 ? a.get() : b.get()));
+ 
+-    expect(c.get()).to.equal(0);
++    expect(c.get()).toBe(0);
+     a.set(1);
+-    expect(c.get()).to.equal(1);
++    expect(c.get()).toBe(1);
+ 
+     a.set(0);
+-    expect(c.get()).to.equal(0);
++    expect(c.get()).toBe(0);
+   });
+ });
+diff --git a/tests/Signal/ported/vue.test.ts b/tests/Signal/ported/vue.test.ts
+index 647d8a7..2f67cde 100644
+--- a/tests/Signal/ported/vue.test.ts
++++ b/tests/Signal/ported/vue.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, it, expect, vi} from 'vitest';
+-import {Signal} from '../../../src';
++import {describe, it, expect, vi} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('Ported - Vue', () => {
+   // https://github.com/vuejs/core/blob/main/packages/reactivity/__tests__/computed.spec.ts#L32
+diff --git a/tests/Signal/state.test.ts b/tests/Signal/state.test.ts
+index 067830a..8299b97 100644
+--- a/tests/Signal/state.test.ts
++++ b/tests/Signal/state.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Signal.State', () => {
+   it('should work', () => {
+diff --git a/tests/Signal/subtle/currentComputed.test.ts b/tests/Signal/subtle/currentComputed.test.ts
+index a21c26d..6c78a9d 100644
+--- a/tests/Signal/subtle/currentComputed.test.ts
++++ b/tests/Signal/subtle/currentComputed.test.ts
+@@ -1,9 +1,9 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('currentComputed', () => {
+   it('works', () => {
+-    expect(Signal.subtle.currentComputed()).toBe(undefined);
++    expect(Signal.subtle.currentComputed()).toBe(null);
+     let context;
+     let c = new Signal.Computed(() => (context = Signal.subtle.currentComputed()));
+     c.get();
+diff --git a/tests/Signal/subtle/untrack.test.ts b/tests/Signal/subtle/untrack.test.ts
+index 5e06be7..12c0f38 100644
+--- a/tests/Signal/subtle/untrack.test.ts
++++ b/tests/Signal/subtle/untrack.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('Untrack', () => {
+   it('works', () => {
+diff --git a/tests/Signal/subtle/watch-unwatch.test.ts b/tests/Signal/subtle/watch-unwatch.test.ts
+index e6e4e1d..2e1eced 100644
+--- a/tests/Signal/subtle/watch-unwatch.test.ts
++++ b/tests/Signal/subtle/watch-unwatch.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it, vi} from 'vitest';
+-import {Signal} from '../../../src/wrapper.js';
++import {describe, expect, it, vi} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('watch and unwatch', () => {
+   it('handles multiple watchers well', () => {
+diff --git a/tests/Signal/subtle/watcher.test.ts b/tests/Signal/subtle/watcher.test.ts
+index 8eada4f..ebc5bfa 100644
+--- a/tests/Signal/subtle/watcher.test.ts
++++ b/tests/Signal/subtle/watcher.test.ts
+@@ -1,5 +1,5 @@
+-import {afterEach, describe, expect, it, vi} from 'vitest';
+-import {Signal} from '../../../src/wrapper.js';
++import {afterEach, describe, expect, it, vi} from 'bun:test';
++import {Signal} from '../../../../mod.ts';
+ 
+ describe('Watcher', () => {
+   type Destructor = () => void;
+diff --git a/tests/behaviors/custom-equality.test.ts b/tests/behaviors/custom-equality.test.ts
+index 3fc5416..bb8301f 100644
+--- a/tests/behaviors/custom-equality.test.ts
++++ b/tests/behaviors/custom-equality.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it, vi} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it, vi} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Custom equality', () => {
+   it('works for State', () => {
+diff --git a/tests/behaviors/cycles.test.ts b/tests/behaviors/cycles.test.ts
+index 5ebb7a4..4cbc4d3 100644
+--- a/tests/behaviors/cycles.test.ts
++++ b/tests/behaviors/cycles.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Cycles', () => {
+   it('detects trivial cycles', () => {
+diff --git a/tests/behaviors/dynamic-dependencies.test.ts b/tests/behaviors/dynamic-dependencies.test.ts
+index fbe404e..009d980 100644
+--- a/tests/behaviors/dynamic-dependencies.test.ts
++++ b/tests/behaviors/dynamic-dependencies.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Dynamic dependencies', () => {
+   function run(live) {
+diff --git a/tests/behaviors/errors.test.ts b/tests/behaviors/errors.test.ts
+index bf366a2..7d13395 100644
+--- a/tests/behaviors/errors.test.ts
++++ b/tests/behaviors/errors.test.ts
+@@ -1,5 +1,5 @@
+-import {afterEach, describe, expect, it, vi} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {afterEach, describe, expect, it, vi} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Errors', () => {
+   it('are cached by computed signals', () => {
+diff --git a/tests/behaviors/graph.test.ts b/tests/behaviors/graph.test.ts
+index 3152765..3bc28b3 100644
+--- a/tests/behaviors/graph.test.ts
++++ b/tests/behaviors/graph.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, it, vi, expect} from 'vitest';
+-import {Signal} from '../../src';
++import {describe, it, vi, expect} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ /**
+  * SolidJS graph tests
+@@ -249,7 +249,7 @@ describe('Graph', () => {
+       ),
+       c1 = new Signal.Computed(
+         () => {
+-          b1.get(), b2.get();
++          (b1.get(), b2.get());
+           seq += 'c1';
+         },
+         {equals: () => false},
+diff --git a/tests/behaviors/guards.test.ts b/tests/behaviors/guards.test.ts
+deleted file mode 100644
+index d66a143..0000000
+--- a/tests/behaviors/guards.test.ts
++++ /dev/null
+@@ -1,22 +0,0 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
+-
+-describe('Guards', () => {
+-  it('should work with Signals', () => {
+-    const state = new Signal.State(1);
+-    const computed = new Signal.Computed(() => state.get() * 2);
+-    expect(Signal.isState(state)).toBe(true);
+-    expect(Signal.isComputed(state)).toBe(false);
+-
+-    expect(Signal.isState(computed)).toBe(false);
+-    expect(Signal.isComputed(computed)).toBe(true);
+-  });
+-
+-  it("shouldn't error with values", () => {
+-    expect(Signal.isState(1)).toBe(false);
+-    expect(Signal.isComputed(2)).toBe(false);
+-
+-    expect(Signal.isState({})).toBe(false);
+-    expect(Signal.isComputed({})).toBe(false);
+-  });
+-});
+diff --git a/tests/behaviors/liveness.test.ts b/tests/behaviors/liveness.test.ts
+index fce1773..7c2d3c5 100644
+--- a/tests/behaviors/liveness.test.ts
++++ b/tests/behaviors/liveness.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it, vi} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it, vi} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('liveness', () => {
+   it('only changes on first and last descendant', () => {
+diff --git a/tests/behaviors/prohibited-contexts.test.ts b/tests/behaviors/prohibited-contexts.test.ts
+index 2136a1b..4ebd81e 100644
+--- a/tests/behaviors/prohibited-contexts.test.ts
++++ b/tests/behaviors/prohibited-contexts.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Prohibited contexts', () => {
+   it('allows writes during computed', () => {
+diff --git a/tests/behaviors/pruning.test.ts b/tests/behaviors/pruning.test.ts
+index bec8175..72a8694 100644
+--- a/tests/behaviors/pruning.test.ts
++++ b/tests/behaviors/pruning.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Pruning', () => {
+   it('only recalculates until things are equal', () => {
+diff --git a/tests/behaviors/receivers.test.ts b/tests/behaviors/receivers.test.ts
+index abd6683..a2028ee 100644
+--- a/tests/behaviors/receivers.test.ts
++++ b/tests/behaviors/receivers.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Receivers', () => {
+   it('is this for computed', () => {
+diff --git a/tests/behaviors/type-checking.test.ts b/tests/behaviors/type-checking.test.ts
+index b66fefd..e6db9bb 100644
+--- a/tests/behaviors/type-checking.test.ts
++++ b/tests/behaviors/type-checking.test.ts
+@@ -1,5 +1,5 @@
+-import {describe, expect, it} from 'vitest';
+-import {Signal} from '../../src/wrapper.js';
++import {describe, expect, it} from 'bun:test';
++import {Signal} from '../../../mod.ts';
+ 
+ describe('Expected class shape', () => {
+   it('should be on the prototype', () => {

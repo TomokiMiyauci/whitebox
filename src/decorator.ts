@@ -1,5 +1,14 @@
-import { Effect, Signal } from "./global.ts";
-import type { RegisterCleanup } from "./reactive_system/reactive.ts";
+import { Signal } from "./signal/mod.ts";
+
+/** Registers a cleanup callback for an effect. */
+export interface RegisterCleanup {
+  /**
+   * Registers a callback to clean up resources created during an action execution.
+   *
+   * @param callback The cleanup callback to execute before the next action execution or when the effect stops.
+   */
+  (callback: VoidFunction): void;
+}
 
 /**
  * Makes a class accessor reactive.
@@ -19,27 +28,19 @@ import type { RegisterCleanup } from "./reactive_system/reactive.ts";
 export function reactive<T>(
   target: ClassAccessorDecoratorTarget<object, T>,
 ): ClassAccessorDecoratorResult<object, T> {
-  const key = Symbol();
+  const { get } = target;
 
   return {
-    get() {
-      const signal: InstanceType<typeof Signal<T>> = Reflect.get(this, key);
-
-      target.get?.call(this);
-      return signal.get;
+    get(): T {
+      return (get.call(this) as Signal.State<T>).get();
     },
 
-    set(value) {
-      const signal: InstanceType<typeof Signal<T>> = Reflect.get(this, key);
-
-      target.set?.call(this, value);
-
-      signal.set(value);
+    set(value: T) {
+      (get.call(this) as Signal.State<T>).set(value);
     },
 
     init(value) {
-      Reflect.set(this, key, new Signal(value));
-      return value;
+      return new Signal.State(value) as T;
     },
   };
 }
@@ -71,10 +72,37 @@ export function effect<C extends new (...args: any) => any>(
       constructor(...args: any) {
         super(...args);
 
-        const bound = (onCleanup: RegisterCleanup) =>
-          action.call(this as InstanceType<C>, onCleanup);
+        let cleanup: VoidFunction | undefined;
 
-        new Effect(bound);
+        const computed = new Signal.Computed(() => {
+          cleanup?.();
+          cleanup = undefined;
+
+          action.call(this as InstanceType<C>, (callback) => {
+            cleanup = callback;
+          });
+        });
+
+        let pending = false;
+
+        const watcher = new Signal.subtle.Watcher(() => {
+          if (pending) return;
+
+          pending = true;
+
+          queueMicrotask(() => {
+            pending = false;
+
+            for (const signal of watcher.getPending()) {
+              signal.get();
+            }
+
+            watcher.watch();
+          });
+        });
+
+        watcher.watch(computed);
+        computed.get();
       }
     };
   };

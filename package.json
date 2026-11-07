@@ -1,6 +1,11 @@
 {
   "devDependencies": {
-    "@types/bun": "^1.4.4",
-    "jsr": "^0.14.3"
+    "@types/bun": "^1.4.4"
+  },
+  "dependencies": {
+    "signal-polyfill": "^0.2.2"
+  },
+  "scripts": {
+    "apply-patch": "git -C src/signal/signal_polyfill apply ../patches/signal_polyfill.patch"
   }
 }
