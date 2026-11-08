@@ -64,12 +64,12 @@ export function reactive<T>(
  * }
  * ```
  */
-export function effect<C extends new (...args: any) => any>(
+export function effect<C extends new (...args: any[]) => any>(
   action: (this: InstanceType<C>, onCleanup: RegisterCleanup) => void,
 ): (value: C) => C {
   return (value) => {
     return class extends value {
-      constructor(...args: any) {
+      constructor(...args: any[]) {
         super(...args);
 
         let cleanup: VoidFunction | undefined;
@@ -181,10 +181,10 @@ export function customElement(
  */
 export function style(
   stylesheet: CSSStyleSheet,
-): <T extends new (...args: any) => HTMLElement>(value: T) => T {
+): <T extends new (...args: any[]) => HTMLElement>(value: T) => T {
   return (value) => {
     return class extends value {
-      constructor(...args: any) {
+      constructor(...args: any[]) {
         super(...args);
 
         const root = this.shadowRoot ? this.shadowRoot : document;
@@ -200,11 +200,11 @@ export function style(
  *
  * @returns A class decorator that ensures the element has a shadow root.
  */
-export function shadowHost<T extends new (...args: any) => HTMLElement>(
+export function shadowHost<T extends new (...args: any[]) => HTMLElement>(
   value: T,
 ): T {
   return class extends value {
-    constructor(...args: any) {
+    constructor(...args: any[]) {
       super(...args);
 
       if (!this.shadowRoot) {
