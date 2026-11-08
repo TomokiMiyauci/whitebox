@@ -1,7 +1,16 @@
-import { describe, expect, mock, it } from "bun:test";
+import { describe, expect, mock, it, spyOn } from "bun:test";
 import { effect, reactive } from "./decorator.ts";
+import { Signal } from "./signal/mod.ts";
+import { Effect } from "./effect.ts";
 
 const flush = () => Promise.resolve();
+
+async function collectGarbage(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    Bun.gc(true);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+}
 
 describe("effect", () => {
   it("should run once after instance construction", () => {
@@ -182,6 +191,68 @@ describe("effect", () => {
     await flush();
 
     expect(action.mock.calls).toEqual([[0], [0], [1], [2]]);
+  });
+
+  it("stops the effect when the instance is garbage collected", async () => {
+    const state = new Signal.State(0);
+    const action = mock();
+
+    const createInstance = (): WeakRef<object> => {
+      @effect(() => {
+        state.get();
+        action();
+      })
+      class A {}
+
+      const instance = new A();
+
+      return new WeakRef(instance);
+    };
+
+    const instance = createInstance();
+
+    // Initial execution.
+    expect(action).toHaveBeenCalledTimes(1);
+
+    await collectGarbage();
+
+    // The instance should have been garbage collected.
+    expect(instance.deref()).toBeUndefined();
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    // The effect should no longer react to signal changes.
+    state.set(1);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it("should stop the effect when the instance is garbage collected", async () => {
+    const stop = spyOn(Effect.prototype, "stop");
+
+    const createInstance = (): WeakRef<object> => {
+      @effect(() => {})
+      class A {}
+
+      const instance = new A();
+
+      return new WeakRef(instance);
+    };
+
+    try {
+      const instance = createInstance();
+
+      await collectGarbage();
+
+      // The instance should have been garbage collected.
+      expect(instance.deref()).toBeUndefined();
+
+      // The effect should have been stopped.
+      expect(stop).toHaveBeenCalledTimes(1);
+    } finally {
+      stop.mockRestore();
+    }
   });
 });
 

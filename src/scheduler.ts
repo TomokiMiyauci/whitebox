@@ -1,12 +1,4 @@
-/** Schedules a task. */
-export interface Scheduler {
-  /**
-   * Schedules a task for execution.
-   *
-   * @param task The task to schedule.
-   */
-  schedule(task: VoidFunction): void;
-}
+import type { Scheduler } from "./effect.ts";
 
 /** Runs scheduled tasks in a microtask and deduplicates identical tasks. */
 export class MicrotaskScheduler implements Scheduler {

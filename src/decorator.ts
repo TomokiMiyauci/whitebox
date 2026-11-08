@@ -1,4 +1,6 @@
 import { Signal } from "./signal/mod.ts";
+import { MicrotaskScheduler } from "./scheduler.ts";
+import { Effect } from "./effect.ts";
 
 /** Registers a cleanup callback for an effect. */
 export interface RegisterCleanup {
@@ -45,11 +47,21 @@ export function reactive<T>(
   };
 }
 
+// Keep the registry alive for as long as this module is alive.
+// A FinalizationRegistry that becomes unreachable may itself be garbage collected,
+// in which case its finalization callbacks will never be executed.
+const registry = new FinalizationRegistry((effect: Effect) => {
+  effect.stop();
+});
+
 /**
  * Makes a class an effect that runs when its reactive dependencies change.
  *
  * The action runs once after the instance is constructed and again whenever a
  * reactive value read by the action changes.
+ *
+ * The effect is automatically stopped when its associated instance is
+ * garbage collected.
  *
  * @param action The function to run with each constructed instance.
  * @returns A class decorator that runs and tracks the action.
@@ -64,45 +76,38 @@ export function reactive<T>(
  * }
  * ```
  */
-export function effect<C extends new (...args: any) => any>(
+export function effect<C extends new (...args: any[]) => any>(
   action: (this: InstanceType<C>, onCleanup: RegisterCleanup) => void,
 ): (value: C) => C {
   return (value) => {
     return class extends value {
-      constructor(...args: any) {
+      constructor(...args: any[]) {
         super(...args);
 
         let cleanup: VoidFunction | undefined;
 
-        const computed = new Signal.Computed(() => {
+        // Use a WeakRef to avoid keeping the instance alive through the effect's
+        // action closure.
+        const instance = new WeakRef(this);
+
+        const task = () => {
+          const target = instance.deref();
+          if (!target) return;
+
           cleanup?.();
           cleanup = undefined;
 
-          action.call(this as InstanceType<C>, (callback) => {
+          action.call(target as InstanceType<C>, (callback) => {
             cleanup = callback;
           });
-        });
+        };
 
-        let pending = false;
+        const scheduler = new MicrotaskScheduler();
+        const effect = Effect.start(task, scheduler);
 
-        const watcher = new Signal.subtle.Watcher(() => {
-          if (pending) return;
-
-          pending = true;
-
-          queueMicrotask(() => {
-            pending = false;
-
-            for (const signal of watcher.getPending()) {
-              signal.get();
-            }
-
-            watcher.watch();
-          });
-        });
-
-        watcher.watch(computed);
-        computed.get();
+        // Stop the effect when the instance is garbage collected.
+        // The effect must not strongly reference the instance, directly or indirectly.
+        registry.register(this, effect);
       }
     };
   };
@@ -181,10 +186,10 @@ export function customElement(
  */
 export function style(
   stylesheet: CSSStyleSheet,
-): <T extends new (...args: any) => HTMLElement>(value: T) => T {
+): <T extends new (...args: any[]) => HTMLElement>(value: T) => T {
   return (value) => {
     return class extends value {
-      constructor(...args: any) {
+      constructor(...args: any[]) {
         super(...args);
 
         const root = this.shadowRoot ? this.shadowRoot : document;
@@ -200,11 +205,11 @@ export function style(
  *
  * @returns A class decorator that ensures the element has a shadow root.
  */
-export function shadowHost<T extends new (...args: any) => HTMLElement>(
+export function shadowHost<T extends new (...args: any[]) => HTMLElement>(
   value: T,
 ): T {
   return class extends value {
-    constructor(...args: any) {
+    constructor(...args: any[]) {
       super(...args);
 
       if (!this.shadowRoot) {
