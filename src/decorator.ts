@@ -1,5 +1,6 @@
 import { Signal } from "./signal/mod.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
+import { Effect } from "./effect.ts";
 
 /** Registers a cleanup callback for an effect. */
 export interface RegisterCleanup {
@@ -75,31 +76,18 @@ export function effect<C extends new (...args: any[]) => any>(
 
         let cleanup: VoidFunction | undefined;
 
-        const computed = new Signal.Computed(() => {
+        const task = () => {
           cleanup?.();
           cleanup = undefined;
 
           action.call(this as InstanceType<C>, (callback) => {
             cleanup = callback;
           });
-        });
+        };
 
         const scheduler = new MicrotaskScheduler();
 
-        const task = (): void => {
-          for (const signal of watcher.getPending()) {
-            signal.get();
-          }
-
-          watcher.watch();
-        };
-
-        const watcher = new Signal.subtle.Watcher(() => {
-          scheduler.schedule(task);
-        });
-
-        watcher.watch(computed);
-        computed.get();
+        Effect.start(task, scheduler);
       }
     };
   };
