@@ -47,11 +47,21 @@ export function reactive<T>(
   };
 }
 
+// Keep the registry alive for as long as this module is alive.
+// A FinalizationRegistry that becomes unreachable may itself be garbage collected,
+// in which case its finalization callbacks will never be executed.
+const registry = new FinalizationRegistry((effect: Effect) => {
+  effect.stop();
+});
+
 /**
  * Makes a class an effect that runs when its reactive dependencies change.
  *
  * The action runs once after the instance is constructed and again whenever a
  * reactive value read by the action changes.
+ *
+ * The effect is automatically stopped when its associated instance is
+ * garbage collected.
  *
  * @param action The function to run with each constructed instance.
  * @returns A class decorator that runs and tracks the action.
@@ -76,18 +86,28 @@ export function effect<C extends new (...args: any[]) => any>(
 
         let cleanup: VoidFunction | undefined;
 
+        // Use a WeakRef to avoid keeping the instance alive through the effect's
+        // action closure.
+        const instance = new WeakRef(this);
+
         const task = () => {
+          const target = instance.deref();
+          if (!target) return;
+
           cleanup?.();
           cleanup = undefined;
 
-          action.call(this as InstanceType<C>, (callback) => {
+          action.call(target as InstanceType<C>, (callback) => {
             cleanup = callback;
           });
         };
 
         const scheduler = new MicrotaskScheduler();
+        const effect = Effect.start(task, scheduler);
 
-        Effect.start(task, scheduler);
+        // Stop the effect when the instance is garbage collected.
+        // The effect must not strongly reference the instance, directly or indirectly.
+        registry.register(this, effect);
       }
     };
   };
