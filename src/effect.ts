@@ -94,7 +94,6 @@ export class EffectLifecycle {
  * subsequent executions when those signals change.
  */
 export class Effect {
-  #action: VoidFunction;
   #scheduler: Scheduler;
   #computed: Signal.Computed<void>;
   #watcher: Signal.subtle.Watcher;
@@ -102,12 +101,9 @@ export class Effect {
   #run: () => void;
 
   private constructor(action: VoidFunction, scheduler: Scheduler) {
-    this.#action = action;
     this.#scheduler = scheduler;
 
-    this.#computed = new Signal.Computed(() => {
-      this.#action();
-    });
+    this.#computed = new Signal.Computed(action);
 
     const run = (): void => {
       if (!this.#lifecycle.isRunning) return;
