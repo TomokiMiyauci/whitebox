@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.3.0...v0.4.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* export Signal API from submodule ([#19](https://github.com/TomokiMiyauci/whitebox/issues/19))
+
+
+### Bug Fixes
+
+* enhance effect handling and scheduling ([#14](https://github.com/TomokiMiyauci/whitebox/issues/14)) ([f178f93](https://github.com/TomokiMiyauci/whitebox/commit/f178f93f2456d39708dbecb3a1263d7025ee4576))
+
 ## [0.3.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.2.0...v0.3.0) (2026-11-07)
 
 
