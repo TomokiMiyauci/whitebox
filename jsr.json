@@ -1,5 +1,8 @@
 {
   "name": "@whitebox/core",
-  "exports": "./src/mod.ts",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./signal": "./src/signal/mod.ts"
+  },
   "version": "0.3.0"
 }
