@@ -7,10 +7,6 @@
 
 * export Signal API from submodule ([#19](https://github.com/TomokiMiyauci/whitebox/issues/19))
 
-### Features
-
-* export Signal API from submodule ([#19](https://github.com/TomokiMiyauci/whitebox/issues/19)) ([7794ea3](https://github.com/TomokiMiyauci/whitebox/commit/7794ea38e7e6bf6f87692feac42dcd105bbf6bb5))
-
 
 ### Bug Fixes
 
