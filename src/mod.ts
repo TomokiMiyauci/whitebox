@@ -50,4 +50,3 @@ export {
   shadowHost,
   type RegisterCleanup,
 } from "./decorator.ts";
-export { Signal } from "./signal/mod.ts";

@@ -86,7 +86,7 @@ Signals are independent of the DOM, Web Components, and rendering frameworks. Th
 Create state with `Signal.State` and derive values with `Signal.Computed`.
 
 ```ts
-import { Signal } from "@whitebox/core";
+import Signal from "@whitebox/core/signal";
 
 const theme = new Signal.State<"light" | "dark">("light");
 const isDark = new Signal.Computed(() => theme.get() === "dark");
@@ -101,7 +101,8 @@ console.log(isDark.get()); // true
 Signals can also be used within Whitebox components to drive reactive UI updates.
 
 ```tsx
-import { Signal, customElement } from "@whitebox/core";
+import { customElement } from "@whitebox/core";
+import Signal from "@whitebox/core/signal";
 import { template } from "@whitebox/react";
 
 const theme = new Signal.State<"light" | "dark">("light");

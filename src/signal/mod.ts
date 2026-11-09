@@ -4,14 +4,14 @@ import { Signal as Ponyfill } from "signal-polyfill";
 /**
  * A reactive value.
  */
-export interface Signal<T> {
+interface Signal<T> {
   /**
    * Returns the current value of the signal.
    */
   get(): T;
 }
 
-export namespace Signal {
+namespace Signal {
   /**
    * A mutable signal that holds a value.
    */
@@ -367,3 +367,5 @@ function toPonyfillOptions<T>(
 
   return result;
 }
+
+export default Signal;

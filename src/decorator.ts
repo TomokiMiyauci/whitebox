@@ -1,4 +1,4 @@
-import { Signal } from "./signal/mod.ts";
+import Signal from "./signal/mod.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
 import { Effect } from "./effect.ts";
 

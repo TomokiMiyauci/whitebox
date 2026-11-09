@@ -1,5 +1,5 @@
 import { describe, it, expect, mock } from "bun:test";
-import { Signal } from "./signal/mod.ts";
+import Signal from "./signal/mod.ts";
 import { Effect, EffectLifecycle, type Scheduler } from "./effect.ts";
 
 class TestScheduler implements Scheduler {

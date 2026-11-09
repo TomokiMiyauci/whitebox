@@ -1,4 +1,4 @@
-import { Signal } from "./signal/mod.ts";
+import Signal from "./signal/mod.ts";
 
 /**
  * Schedules a task for execution.

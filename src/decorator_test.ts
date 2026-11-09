@@ -1,6 +1,6 @@
 import { describe, expect, mock, it, spyOn } from "bun:test";
 import { effect, reactive } from "./decorator.ts";
-import { Signal } from "./signal/mod.ts";
+import Signal from "./signal/mod.ts";
 import { Effect } from "./effect.ts";
 
 const flush = () => Promise.resolve();
