@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/TomokiMiyauci/whitebox/compare/v0.4.0...v0.4.1) (2026-11-10)
+
+
+### Features
+
+* attr decorator to preserve original getter/setter behavior and manage default values ([#23](https://github.com/TomokiMiyauci/whitebox/issues/23)) ([e0a39a3](https://github.com/TomokiMiyauci/whitebox/commit/e0a39a3a2fe8499c742124fd30773e852c958805))
+* preserve original accessors and refine reactive types ([#21](https://github.com/TomokiMiyauci/whitebox/issues/21)) ([9ebeb5e](https://github.com/TomokiMiyauci/whitebox/commit/9ebeb5e0c52636ef29efe9ed525ba2ecde4ec805))
+
 ## [0.4.0](https://github.com/TomokiMiyauci/whitebox/compare/v0.3.0...v0.4.0) (2026-11-09)
 
 
