@@ -63,7 +63,7 @@ jobs:
       - name: Convert coverage
         run: |
           bunx @splicemood/lcov-to-cobertura \
-            lcov-to-cobertura coverage/lcov.info \
+            coverage/lcov.info \
             -o coverage/cobertura.xml
 
       - uses: actions/upload-code-coverage@v1
