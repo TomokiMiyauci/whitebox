@@ -466,35 +466,35 @@ describe("reactive", () => {
   });
 });
 
-describe("attr", () => {
-  class MockElement {
-    value: string | null;
+class MockElement {
+  value: string | null;
 
-    constructor(value: string | null = null) {
-      this.value = value;
-    }
-
-    #attributes = new Map<string, string>();
-
-    getAttribute(name: string): string | null {
-      return this.#attributes.get(name) ?? null;
-    }
-
-    setAttribute(name: string, value: string): void {
-      this.#attributes.set(name, value);
-    }
-
-    removeAttribute(name: string): void {
-      this.#attributes.delete(name);
-    }
-
-    hasAttribute(name: string): boolean {
-      return this.#attributes.has(name);
-    }
+  constructor(value: string | null = null) {
+    this.value = value;
   }
 
-  interface MockElement extends Element {}
+  #attributes = new Map<string, string>();
 
+  getAttribute(name: string): string | null {
+    return this.#attributes.get(name) ?? null;
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.#attributes.set(name, value);
+  }
+
+  removeAttribute(name: string): void {
+    this.#attributes.delete(name);
+  }
+
+  hasAttribute(name: string): boolean {
+    return this.#attributes.has(name);
+  }
+}
+
+interface MockElement extends Element {}
+
+describe("attr", () => {
   class MockContext<
     This = unknown,
     Value = unknown,
@@ -793,6 +793,110 @@ describe("attr", () => {
 
       expect(element.getAttribute("label")).toBe("next label");
       expect(element.getAttribute("name")).toBeNull();
+    });
+  });
+});
+
+describe("reactive + attr", () => {
+  class ReactiveAttrElement extends MockElement {
+    @reactive
+    @attr
+    accessor label: string | null = "default";
+  }
+
+  class AttrReactiveElement extends MockElement {
+    @attr
+    @reactive
+    accessor label: string | null = "default";
+  }
+
+  describe("@reactive @attr", () => {
+    it("returns the default value when the attribute is absent", () => {
+      const element = new ReactiveAttrElement();
+
+      expect(element.label).toBe("default");
+    });
+
+    it("returns the attribute value when present", () => {
+      const element = new ReactiveAttrElement();
+
+      element.setAttribute("label", "external");
+
+      expect(element.label).toBe("external");
+    });
+
+    it("reflects property changes to the attribute", () => {
+      const element = new ReactiveAttrElement();
+
+      element.label = "updated";
+
+      expect(element.getAttribute("label")).toBe("updated");
+      expect(element.label).toBe("updated");
+    });
+
+    it("removes the attribute when set to null", () => {
+      const element = new ReactiveAttrElement();
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
+    });
+
+    it("tracks reads through the attr decorator", () => {
+      const element = new ReactiveAttrElement();
+      const computed = new Signal.Computed(() => element.label);
+
+      expect(computed.get()).toBe("default");
+
+      element.label = "updated";
+
+      expect(computed.get()).toBe("updated");
+    });
+  });
+
+  describe("@attr @reactive", () => {
+    it("returns the default value when the attribute is absent", () => {
+      const element = new AttrReactiveElement();
+
+      expect(element.label).toBe("default");
+    });
+
+    it("returns the attribute value when present", () => {
+      const element = new AttrReactiveElement();
+
+      element.setAttribute("label", "external");
+
+      expect(element.label).toBe("external");
+    });
+
+    it("reflects property changes to the attribute", () => {
+      const element = new AttrReactiveElement();
+
+      element.label = "updated";
+
+      expect(element.getAttribute("label")).toBe("updated");
+      expect(element.label).toBe("updated");
+    });
+
+    it("removes the attribute when set to null", () => {
+      const element = new AttrReactiveElement();
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
+    });
+
+    it("tracks reads through the reactive decorator", () => {
+      const element = new AttrReactiveElement();
+      const computed = new Signal.Computed(() => element.label);
+
+      expect(computed.get()).toBe("default");
+
+      element.label = "updated";
+
+      expect(computed.get()).toBe("updated");
     });
   });
 });
