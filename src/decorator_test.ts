@@ -257,54 +257,211 @@ describe("effect", () => {
 });
 
 describe("reactive", () => {
-  it("should preserve the initial value", () => {
-    class Counter {
-      @reactive accessor count = 10;
-    }
+  describe("decorator", () => {
+    it("should preserve the initial value", () => {
+      class Counter {
+        @reactive accessor count = 10;
+      }
 
-    const counter = new Counter();
+      const counter = new Counter();
 
-    expect(counter.count).toBe(10);
+      expect(counter.count).toBe(10);
+    });
+
+    it("should return the updated value", () => {
+      class Counter {
+        @reactive accessor count = 0;
+      }
+
+      const counter = new Counter();
+
+      counter.count = 10;
+
+      expect(counter.count).toBe(10);
+    });
+
+    it("should maintain independent state for each instance", () => {
+      class Counter {
+        @reactive accessor count = 0;
+      }
+
+      const first = new Counter();
+      const second = new Counter();
+
+      first.count = 10;
+
+      expect(first.count).toBe(10);
+      expect(second.count).toBe(0);
+    });
+
+    it("should support multiple reactive accessors", () => {
+      class Counter {
+        @reactive accessor count = 0;
+        @reactive accessor name = "counter";
+      }
+
+      const counter = new Counter();
+
+      counter.count = 10;
+      counter.name = "updated";
+
+      expect(counter.count).toBe(10);
+      expect(counter.name).toBe("updated");
+    });
+
+    it("should track dependencies", () => {
+      class Counter {
+        @reactive accessor count = 0;
+      }
+
+      const counter = new Counter();
+      const computed = new Signal.Computed(() => counter.count * 2);
+
+      expect(computed.get()).toBe(0);
+
+      counter.count = 10;
+
+      expect(computed.get()).toBe(20);
+
+      counter.count = 10;
+
+      expect(computed.get()).toBe(20);
+
+      counter.count = 20;
+
+      expect(computed.get()).toBe(40);
+    });
   });
 
-  it("should return the updated value", () => {
-    class Counter {
-      @reactive accessor count = 0;
+  describe("direct invocation", () => {
+    interface Value {
+      value: number;
     }
 
-    const counter = new Counter();
+    it("should preserve the original setter behavior", () => {
+      const target = {
+        get(): number {
+          return this.value;
+        },
 
-    counter.count = 10;
+        set(value: number): void {
+          this.value = value * 2;
+        },
+      } satisfies ClassAccessorDecoratorTarget<Value, number>;
 
-    expect(counter.count).toBe(10);
-  });
+      const result = reactive(target);
+      const instance = { value: 0 } satisfies Value;
 
-  it("should maintain independent state for each instance", () => {
-    class Counter {
-      @reactive accessor count = 0;
-    }
+      const init = result.init.call(instance, 1);
 
-    const first = new Counter();
-    const second = new Counter();
+      expect(init).toBe(1);
 
-    first.count = 10;
+      result.set.call(instance, 5);
 
-    expect(first.count).toBe(10);
-    expect(second.count).toBe(0);
-  });
+      expect(instance.value).toBe(10);
+      expect(result.get.call(instance)).toBe(10);
+    });
 
-  it("should support multiple reactive accessors", () => {
-    class Counter {
-      @reactive accessor count = 0;
-      @reactive accessor name = "counter";
-    }
+    it("should maintain independent state for each instance", () => {
+      const target = {
+        get(): number {
+          return this.value;
+        },
 
-    const counter = new Counter();
+        set(value: number): void {
+          this.value = value;
+        },
+      } satisfies ClassAccessorDecoratorTarget<Value, number>;
 
-    counter.count = 10;
-    counter.name = "updated";
+      const result = reactive(target);
+      const first = { value: 0 } satisfies Value;
+      const second = { value: 0 } satisfies Value;
 
-    expect(counter.count).toBe(10);
-    expect(counter.name).toBe("updated");
+      result.init.call(first, 0);
+      result.init.call(second, 0);
+
+      result.set.call(first, 10);
+
+      expect(result.get.call(first)).toBe(10);
+      expect(result.get.call(second)).toBe(0);
+
+      result.set!.call(second, 5);
+
+      expect(result.get.call(first)).toBe(10);
+      expect(result.get.call(second)).toBe(5);
+    });
+
+    it("should notify dependencies with the original setter behavior", () => {
+      const target = {
+        get(): number {
+          return this.value;
+        },
+
+        set(value: number): void {
+          this.value = value * 2;
+        },
+      } satisfies ClassAccessorDecoratorTarget<Value, number>;
+
+      const result = reactive(target);
+      const instance = { value: 0 } satisfies Value;
+
+      instance.value = result.init.call(instance, 1);
+
+      const computed = new Signal.Computed(() => result.get.call(instance));
+
+      expect(computed.get()).toBe(1);
+
+      result.set.call(instance, 5);
+
+      expect(instance.value).toBe(10);
+      expect(computed.get()).toBe(10);
+    });
+
+    it("should throw when get is called before initialization", () => {
+      let getCalls = 0;
+
+      const target = {
+        get(): number {
+          getCalls++;
+          return this.value;
+        },
+
+        set(value: number): void {
+          this.value = value;
+        },
+      } satisfies ClassAccessorDecoratorTarget<Value, number>;
+
+      const result = reactive(target);
+      const instance = { value: 0 } satisfies Value;
+
+      expect(() => result.get.call(instance)).toThrow(Error);
+
+      expect(getCalls).toBe(0);
+    });
+
+    it("should throw when set is called before initialization", () => {
+      let getCalls = 0;
+      let setCalls = 0;
+
+      const target = {
+        get(): number {
+          getCalls++;
+          return this.value;
+        },
+
+        set(value: number): void {
+          setCalls++;
+          this.value = value;
+        },
+      } satisfies ClassAccessorDecoratorTarget<Value, number>;
+
+      const result = reactive(target);
+      const instance = { value: 0 } satisfies Value;
+
+      expect(() => result.set.call(instance, 10)).toThrow(Error);
+
+      expect(getCalls).toBe(0);
+      expect(setCalls).toBe(0);
+    });
   });
 });
