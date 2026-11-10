@@ -13,6 +13,25 @@ export interface RegisterCleanup {
 }
 
 /**
+ * @throws {Error}
+ */
+function getOrThrow<K extends WeakKey, V>(
+  map: WeakMap<K, V>,
+  instance: K,
+  error: { new (): Error } = Error,
+): V {
+  if (!map.has(instance)) {
+    throw new error();
+  }
+
+  return map.get(instance)!;
+}
+
+class InitError extends Error {
+  override message: string = "Reactive state has not been initialized.";
+}
+
+/**
  * Makes a class accessor reactive.
  *
  * Reads of the accessor are tracked by the active effect. Setting a different
@@ -27,22 +46,35 @@ export interface RegisterCleanup {
  * }
  * ```
  */
-export function reactive<T>(
-  target: ClassAccessorDecoratorTarget<object, T>,
-): ClassAccessorDecoratorResult<object, T> {
-  const { get } = target;
+export function reactive<T extends object, U>(
+  target: ClassAccessorDecoratorTarget<T, U>,
+): Required<ClassAccessorDecoratorResult<T, U>> {
+  const { get, set } = target;
+  const map = new WeakMap<T, Signal.State<U>>();
 
   return {
-    get(): T {
-      return (get.call(this) as Signal.State<T>).get();
+    get(): U {
+      const state = getOrThrow(map, this, InitError);
+      const current = get.call(this);
+
+      state.get();
+
+      return current;
     },
 
-    set(value: T) {
-      (get.call(this) as Signal.State<T>).set(value);
+    set(value: U): void {
+      const state = getOrThrow(map, this, InitError);
+      set.call(this, value);
+
+      const current = get.call(this);
+
+      state.set(current);
     },
 
-    init(value) {
-      return new Signal.State(value) as T;
+    init(value): U {
+      map.set(this, new Signal.State(value));
+
+      return value;
     },
   };
 }
