@@ -1,5 +1,5 @@
 import { describe, expect, mock, it, spyOn } from "bun:test";
-import { effect, reactive } from "./decorator.ts";
+import { effect, reactive, attr } from "./decorator.ts";
 import Signal from "./signal/mod.ts";
 import { Effect } from "./effect.ts";
 
@@ -306,5 +306,181 @@ describe("reactive", () => {
 
     expect(counter.count).toBe(10);
     expect(counter.name).toBe("updated");
+  });
+});
+
+describe("attr", () => {
+  class MockElement {
+    #attributes = new Map<string, string>();
+
+    getAttribute(name: string): string | null {
+      return this.#attributes.get(name) ?? null;
+    }
+
+    setAttribute(name: string, value: string): void {
+      this.#attributes.set(name, value);
+    }
+
+    removeAttribute(name: string): void {
+      this.#attributes.delete(name);
+    }
+
+    hasAttribute(name: string): boolean {
+      return this.#attributes.has(name);
+    }
+  }
+
+  interface MockElement extends Element {}
+
+  class MockContext<
+    This = unknown,
+    Value = unknown,
+  > implements ClassAccessorDecoratorContext<This, Value> {
+    constructor(public name: string | symbol) {}
+  }
+
+  interface MockContext<
+    This = unknown,
+    Value = unknown,
+  > extends ClassAccessorDecoratorContext<This, Value> {}
+
+  function createAccessor(
+    name: string | symbol,
+    defaultValue: string | null = null,
+  ) {
+    return attr(
+      {
+        get: () => defaultValue,
+        set() {},
+      },
+      new MockContext<Element, string | null>(name),
+    );
+  }
+
+  it("returns the default value when the attribute is absent", () => {
+    const defaultValue = "default";
+    const accessor = createAccessor("label", defaultValue);
+    const element = new MockElement();
+
+    expect(accessor.get?.call(element)).toBe(defaultValue);
+  });
+
+  it("returns the attribute value when the attribute is present", () => {
+    const accessor = createAccessor("label", "default");
+    const element = new MockElement();
+
+    element.setAttribute("label", "current");
+
+    expect(accessor.get?.call(element)).toBe("current");
+  });
+
+  it("reflects external attribute changes", () => {
+    const accessor = createAccessor("label", "default");
+    const element = new MockElement();
+
+    element.setAttribute("label", "first");
+    expect(accessor.get?.call(element)).toBe("first");
+
+    element.setAttribute("label", "second");
+    expect(accessor.get?.call(element)).toBe("second");
+  });
+
+  it("returns an empty string when the attribute is empty", () => {
+    const accessor = createAccessor("label", "default");
+    const element = new MockElement();
+
+    element.setAttribute("label", "");
+
+    expect(accessor.get?.call(element)).toBe("");
+  });
+
+  it("sets the corresponding attribute", () => {
+    const accessor = createAccessor("label");
+    const element = new MockElement();
+
+    accessor.set?.call(element, "current");
+
+    expect(element.getAttribute("label")).toBe("current");
+  });
+
+  it("removes the attribute when set to null", () => {
+    const accessor = createAccessor("label");
+    const element = new MockElement();
+
+    element.setAttribute("label", "current");
+
+    accessor.set?.call(element, null);
+
+    expect(element.hasAttribute("label")).toBe(false);
+  });
+
+  it("returns the default value after the attribute is removed", () => {
+    const defaultValue = "default";
+    const accessor = createAccessor("label", defaultValue);
+    const element = new MockElement();
+
+    accessor.set?.call(element, "current");
+    expect(accessor.get?.call(element)).toBe("current");
+
+    accessor.set?.call(element, null);
+
+    expect(accessor.get?.call(element)).toBe(defaultValue);
+  });
+
+  it("throws when the accessor name is a symbol", () => {
+    expect(() => createAccessor(Symbol())).toThrow(Error);
+  });
+
+  describe("decorator", () => {
+    it("reflects the accessor to an attribute", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const element = new MyElement();
+
+      expect(element.label).toBe("default");
+
+      element.label = "next";
+
+      expect(element.getAttribute("label")).toBe("next");
+      expect(element.label).toBe("next");
+    });
+
+    it("maintains independent default values across instances", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const first = new MyElement();
+      const second = new MyElement();
+
+      first.label = "first";
+
+      expect(first.label).toBe("first");
+      expect(second.label).toBe("default");
+    });
+
+    it("supports multiple accessors independently", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default label";
+
+        @attr
+        accessor name: string | null = "default name";
+      }
+
+      const element = new MyElement();
+
+      element.label = "next label";
+
+      expect(element.label).toBe("next label");
+      expect(element.name).toBe("default name");
+
+      expect(element.getAttribute("label")).toBe("next label");
+      expect(element.getAttribute("name")).toBeNull();
+    });
   });
 });

@@ -116,9 +116,9 @@ export function effect<C extends new (...args: any[]) => any>(
 /**
  * Reflects a class accessor to an HTML attribute on an element.
  *
- * Reading the accessor returns the current attribute value. Setting it updates
+ * Reading the accessor returns the attribute value, or its
+ * default value when the attribute is absent. Setting it updates
  * or removes the corresponding attribute.
- *
  * @param target The class accessor decorator target.
  * @param context The class accessor decorator context.
  * @throws {Error} If the accessor name is not a string.
@@ -134,15 +134,14 @@ export function attr(
   target: ClassAccessorDecoratorTarget<Element, string | null>,
   context: ClassAccessorDecoratorContext<Element, string | null>,
 ): ClassAccessorDecoratorResult<Element, string | null> {
-  const name = context.name;
+  const { get } = target;
+  const { name } = context;
 
   if (typeof name !== "string") throw new Error();
 
   return {
     get(this: Element): string | null {
-      target.get?.call(this);
-
-      return this.getAttribute(name);
+      return this.hasAttribute(name) ? this.getAttribute(name) : get.call(this);
     },
     set(this: Element, value: string | null): void {
       if (value === null) {
@@ -150,8 +149,6 @@ export function attr(
       } else {
         this.setAttribute(name, value);
       }
-
-      target.set?.call(this, value);
     },
   };
 }
