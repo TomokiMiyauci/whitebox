@@ -153,7 +153,7 @@ export function effect<C extends new (...args: any[]) => any>(
  * or removes the corresponding attribute.
  * @param target The class accessor decorator target.
  * @param context The class accessor decorator context.
- * @throws {Error} If the accessor name is not a string.
+ * @throws {TypeError} If the accessor name is not a string.
  * @example
  * ```ts
  * class MyButton extends HTMLElement {
@@ -170,7 +170,7 @@ export function attr<T extends Element>(
   const { name } = context;
 
   if (typeof name !== "string")
-    throw new Error(
+    throw new TypeError(
       `The @attr decorator can only be applied to string-named accessors.`,
     );
 

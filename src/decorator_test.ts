@@ -722,7 +722,7 @@ describe("attr", () => {
 
   it("throws when the accessor name is a symbol", () => {
     expect(() => attr(createTarget(), new MockContext(Symbol()))).toThrow(
-      Error,
+      TypeError,
     );
   });
 
