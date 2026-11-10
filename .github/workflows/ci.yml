@@ -39,6 +39,8 @@ jobs:
         run: bun check
 
   test:
+    permissions:
+      code-quality: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
