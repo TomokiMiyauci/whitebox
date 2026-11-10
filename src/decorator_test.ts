@@ -468,6 +468,12 @@ describe("reactive", () => {
 
 describe("attr", () => {
   class MockElement {
+    value: string | null;
+
+    constructor(value: string | null = null) {
+      this.value = value;
+    }
+
     #attributes = new Map<string, string>();
 
     getAttribute(name: string): string | null {
@@ -501,91 +507,223 @@ describe("attr", () => {
     Value = unknown,
   > extends ClassAccessorDecoratorContext<This, Value> {}
 
-  function createAccessor(
-    name: string | symbol,
-    defaultValue: string | null = null,
-  ) {
-    return attr(
-      {
-        get: () => defaultValue,
-        set() {},
-      },
-      new MockContext<Element, string | null>(name),
-    );
+  interface Instance extends Element {
+    value: string | null;
   }
 
-  it("returns the default value when the attribute is absent", () => {
-    const defaultValue = "default";
-    const accessor = createAccessor("label", defaultValue);
-    const element = new MockElement();
+  function createTarget(): ClassAccessorDecoratorTarget<
+    Instance,
+    string | null
+  > {
+    return {
+      get(): string | null {
+        return this.value;
+      },
+      set(value) {
+        this.value = value;
+      },
+    };
+  }
 
-    expect(accessor.get?.call(element)).toBe(defaultValue);
+  const defaultValue = "default";
+
+  it("returns the default value when the attribute is absent", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    expect(result.get.call(element)).toBe(defaultValue);
   });
 
   it("returns the attribute value when the attribute is present", () => {
-    const accessor = createAccessor("label", "default");
-    const element = new MockElement();
+    const target = createTarget();
+    const key = "label";
+    const result = attr(target, new MockContext(key));
+    const element = new MockElement(defaultValue);
 
-    element.setAttribute("label", "current");
+    result.init.call(element, element.value);
+    element.setAttribute(key, "current");
 
-    expect(accessor.get?.call(element)).toBe("current");
+    expect(result.get.call(element)).toBe("current");
   });
 
   it("reflects external attribute changes", () => {
-    const accessor = createAccessor("label", "default");
-    const element = new MockElement();
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
 
     element.setAttribute("label", "first");
-    expect(accessor.get?.call(element)).toBe("first");
+    expect(result.get.call(element)).toBe("first");
 
     element.setAttribute("label", "second");
-    expect(accessor.get?.call(element)).toBe("second");
+    expect(result.get.call(element)).toBe("second");
+  });
+
+  it("returns the default value when the attribute is externally removed", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute("label", "current");
+    element.removeAttribute("label");
+
+    expect(result.get.call(element)).toBe(defaultValue);
   });
 
   it("returns an empty string when the attribute is empty", () => {
-    const accessor = createAccessor("label", "default");
-    const element = new MockElement();
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
 
+    result.init.call(element, element.value);
     element.setAttribute("label", "");
 
-    expect(accessor.get?.call(element)).toBe("");
+    expect(result.get.call(element)).toBe("");
   });
 
   it("sets the corresponding attribute", () => {
-    const accessor = createAccessor("label");
+    const target = createTarget();
+    const key = "label";
+    const result = attr(target, new MockContext(key));
     const element = new MockElement();
 
-    accessor.set?.call(element, "current");
+    result.init.call(element, element.value);
 
-    expect(element.getAttribute("label")).toBe("current");
+    const value = "current";
+
+    result.set.call(element, value);
+
+    expect(element.getAttribute(key)).toBe(value);
   });
 
   it("removes the attribute when set to null", () => {
-    const accessor = createAccessor("label");
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
     const element = new MockElement();
 
+    result.init.call(element, element.value);
     element.setAttribute("label", "current");
 
-    accessor.set?.call(element, null);
+    result.set.call(element, null);
 
     expect(element.hasAttribute("label")).toBe(false);
   });
 
   it("returns the default value after the attribute is removed", () => {
-    const defaultValue = "default";
-    const accessor = createAccessor("label", defaultValue);
+    const target = createTarget();
+    const element = new MockElement(defaultValue);
+    const result = attr(target, new MockContext("label"));
+
+    result.init.call(element, element.value);
+
+    result.set.call(element, "current");
+    expect(result.get.call(element)).toBe("current");
+
+    result.set.call(element, null);
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("calls the original getter when the attribute is absent", () => {
+    const key = "label";
+    const target = createTarget();
+    const get = mock(target.get);
+    const result = attr({ ...target, get }, new MockContext(key));
     const element = new MockElement();
 
-    accessor.set?.call(element, "current");
-    expect(accessor.get?.call(element)).toBe("current");
+    result.init.call(element, element.value);
 
-    accessor.set?.call(element, null);
+    expect(result.get.call(element)).toBe(null);
+    expect(element.hasAttribute(key)).toBeFalse();
+    expect(get).toHaveBeenCalledOnce();
+  });
 
-    expect(accessor.get?.call(element)).toBe(defaultValue);
+  it("calls the original getter when the attribute is present", () => {
+    const key = "label";
+    const target = createTarget();
+    const get = mock(target.get);
+    const result = attr({ ...target, get }, new MockContext(key));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute(key, "current");
+
+    expect(result.get.call(element)).toBe("current");
+    expect(get).toHaveBeenCalledOnce();
+  });
+
+  it("calls the original setter with the provided value", () => {
+    const target = createTarget();
+    const set = mock(target.set);
+    const result = attr({ ...target, set }, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    result.set.call(element, "current");
+
+    expect(set).toHaveBeenCalledOnce();
+    expect(set).toHaveBeenCalledWith("current");
+  });
+
+  it("reflects the value returned by the original getter", () => {
+    const target = createTarget();
+
+    const result = attr(
+      {
+        get: target.get,
+        set(value) {
+          this.value = value === null ? null : `label: ${value}`;
+        },
+      },
+      new MockContext("label"),
+    );
+
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    result.set.call(element, "current");
+
+    expect(element.getAttribute("label")).toBe("label: current");
+  });
+
+  it("returns the default value instead of the current accessor value", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    element.value = "custom";
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("preserves the default value after multiple attribute updates", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    result.set.call(element, "first");
+    result.set.call(element, "second");
+
+    expect(result.get.call(element)).toBe("second");
+
+    result.set.call(element, null);
+
+    expect(result.get.call(element)).toBe(defaultValue);
   });
 
   it("throws when the accessor name is a symbol", () => {
-    expect(() => createAccessor(Symbol())).toThrow(Error);
+    expect(() => attr(createTarget(), new MockContext(Symbol()))).toThrow(
+      Error,
+    );
   });
 
   describe("decorator", () => {
@@ -603,6 +741,23 @@ describe("attr", () => {
 
       expect(element.getAttribute("label")).toBe("next");
       expect(element.label).toBe("next");
+    });
+
+    it("returns the default value after the attribute is removed", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const element = new MyElement();
+
+      element.label = "current";
+      expect(element.label).toBe("current");
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
     });
 
     it("maintains independent default values across instances", () => {

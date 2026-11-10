@@ -162,25 +162,47 @@ export function effect<C extends new (...args: any[]) => any>(
  * }
  * ```
  */
-export function attr(
-  target: ClassAccessorDecoratorTarget<Element, string | null>,
-  context: ClassAccessorDecoratorContext<Element, string | null>,
-): ClassAccessorDecoratorResult<Element, string | null> {
-  const { get } = target;
+export function attr<T extends Element>(
+  target: ClassAccessorDecoratorTarget<T, string | null>,
+  context: ClassAccessorDecoratorContext<T, string | null>,
+): Required<ClassAccessorDecoratorResult<T, string | null>> {
+  const { get, set } = target;
   const { name } = context;
 
-  if (typeof name !== "string") throw new Error();
+  if (typeof name !== "string")
+    throw new Error(
+      `The @attr decorator can only be applied to string-named accessors.`,
+    );
+
+  const defaultValue = new WeakMap<T, string | null>();
 
   return {
-    get(this: Element): string | null {
-      return this.hasAttribute(name) ? this.getAttribute(name) : get.call(this);
+    get(): string | null {
+      // Preserve the original getter and any inner decorator behavior.
+      get.call(this);
+
+      return this.hasAttribute(name)
+        ? this.getAttribute(name)
+        : getOrThrow(defaultValue, this, InitError);
     },
-    set(this: Element, value: string | null): void {
-      if (value === null) {
+    set(value: string | null): void {
+      // Preserve the original setter and any inner decorator behavior.
+      set.call(this, value);
+
+      // Read the accessor again to obtain the value after setter transformations.
+      const current = get.call(this);
+
+      if (current === null) {
         this.removeAttribute(name);
       } else {
-        this.setAttribute(name, value);
+        this.setAttribute(name, current);
       }
+    },
+    init(value) {
+      // Keep the initial value as the fallback when the attribute is absent.
+      defaultValue.set(this, value);
+
+      return value;
     },
   };
 }
