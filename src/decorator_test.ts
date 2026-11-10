@@ -1,5 +1,5 @@
 import { describe, expect, mock, it, spyOn } from "bun:test";
-import { effect, reactive } from "./decorator.ts";
+import { effect, reactive, attr } from "./decorator.ts";
 import Signal from "./signal/mod.ts";
 import { Effect } from "./effect.ts";
 
@@ -462,6 +462,441 @@ describe("reactive", () => {
 
       expect(getCalls).toBe(0);
       expect(setCalls).toBe(0);
+    });
+  });
+});
+
+class MockElement {
+  value: string | null;
+
+  constructor(value: string | null = null) {
+    this.value = value;
+  }
+
+  #attributes = new Map<string, string>();
+
+  getAttribute(name: string): string | null {
+    return this.#attributes.get(name) ?? null;
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.#attributes.set(name, value);
+  }
+
+  removeAttribute(name: string): void {
+    this.#attributes.delete(name);
+  }
+
+  hasAttribute(name: string): boolean {
+    return this.#attributes.has(name);
+  }
+}
+
+interface MockElement extends Element {}
+
+describe("attr", () => {
+  class MockContext<
+    This = unknown,
+    Value = unknown,
+  > implements ClassAccessorDecoratorContext<This, Value> {
+    constructor(public name: string | symbol) {}
+  }
+
+  interface MockContext<
+    This = unknown,
+    Value = unknown,
+  > extends ClassAccessorDecoratorContext<This, Value> {}
+
+  interface Instance extends Element {
+    value: string | null;
+  }
+
+  function createTarget(): ClassAccessorDecoratorTarget<
+    Instance,
+    string | null
+  > {
+    return {
+      get(): string | null {
+        return this.value;
+      },
+      set(value) {
+        this.value = value;
+      },
+    };
+  }
+
+  const defaultValue = "default";
+
+  it("returns the default value when the attribute is absent", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("returns the attribute value when the attribute is present", () => {
+    const target = createTarget();
+    const key = "label";
+    const result = attr(target, new MockContext(key));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute(key, "current");
+
+    expect(result.get.call(element)).toBe("current");
+  });
+
+  it("reflects external attribute changes", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    element.setAttribute("label", "first");
+    expect(result.get.call(element)).toBe("first");
+
+    element.setAttribute("label", "second");
+    expect(result.get.call(element)).toBe("second");
+  });
+
+  it("returns the default value when the attribute is externally removed", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute("label", "current");
+    element.removeAttribute("label");
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("returns an empty string when the attribute is empty", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute("label", "");
+
+    expect(result.get.call(element)).toBe("");
+  });
+
+  it("sets the corresponding attribute", () => {
+    const target = createTarget();
+    const key = "label";
+    const result = attr(target, new MockContext(key));
+    const element = new MockElement();
+
+    result.init.call(element, element.value);
+
+    const value = "current";
+
+    result.set.call(element, value);
+
+    expect(element.getAttribute(key)).toBe(value);
+  });
+
+  it("removes the attribute when set to null", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement();
+
+    result.init.call(element, element.value);
+    element.setAttribute("label", "current");
+
+    result.set.call(element, null);
+
+    expect(element.hasAttribute("label")).toBe(false);
+  });
+
+  it("returns the default value after the attribute is removed", () => {
+    const target = createTarget();
+    const element = new MockElement(defaultValue);
+    const result = attr(target, new MockContext("label"));
+
+    result.init.call(element, element.value);
+
+    result.set.call(element, "current");
+    expect(result.get.call(element)).toBe("current");
+
+    result.set.call(element, null);
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("calls the original getter when the attribute is absent", () => {
+    const key = "label";
+    const target = createTarget();
+    const get = mock(target.get);
+    const result = attr({ ...target, get }, new MockContext(key));
+    const element = new MockElement();
+
+    result.init.call(element, element.value);
+
+    expect(result.get.call(element)).toBe(null);
+    expect(element.hasAttribute(key)).toBeFalse();
+    expect(get).toHaveBeenCalledOnce();
+  });
+
+  it("calls the original getter when the attribute is present", () => {
+    const key = "label";
+    const target = createTarget();
+    const get = mock(target.get);
+    const result = attr({ ...target, get }, new MockContext(key));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    element.setAttribute(key, "current");
+
+    expect(result.get.call(element)).toBe("current");
+    expect(get).toHaveBeenCalledOnce();
+  });
+
+  it("calls the original setter with the provided value", () => {
+    const target = createTarget();
+    const set = mock(target.set);
+    const result = attr({ ...target, set }, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    result.set.call(element, "current");
+
+    expect(set).toHaveBeenCalledOnce();
+    expect(set).toHaveBeenCalledWith("current");
+  });
+
+  it("reflects the value returned by the original getter", () => {
+    const target = createTarget();
+
+    const result = attr(
+      {
+        get: target.get,
+        set(value) {
+          this.value = value === null ? null : `label: ${value}`;
+        },
+      },
+      new MockContext("label"),
+    );
+
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+    result.set.call(element, "current");
+
+    expect(element.getAttribute("label")).toBe("label: current");
+  });
+
+  it("returns the default value instead of the current accessor value", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    element.value = "custom";
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("preserves the default value after multiple attribute updates", () => {
+    const target = createTarget();
+    const result = attr(target, new MockContext("label"));
+    const element = new MockElement(defaultValue);
+
+    result.init.call(element, element.value);
+
+    result.set.call(element, "first");
+    result.set.call(element, "second");
+
+    expect(result.get.call(element)).toBe("second");
+
+    result.set.call(element, null);
+
+    expect(result.get.call(element)).toBe(defaultValue);
+  });
+
+  it("throws when the accessor name is a symbol", () => {
+    expect(() => attr(createTarget(), new MockContext(Symbol()))).toThrow(
+      TypeError,
+    );
+  });
+
+  describe("decorator", () => {
+    it("reflects the accessor to an attribute", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const element = new MyElement();
+
+      expect(element.label).toBe("default");
+
+      element.label = "next";
+
+      expect(element.getAttribute("label")).toBe("next");
+      expect(element.label).toBe("next");
+    });
+
+    it("returns the default value after the attribute is removed", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const element = new MyElement();
+
+      element.label = "current";
+      expect(element.label).toBe("current");
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
+    });
+
+    it("maintains independent default values across instances", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default";
+      }
+
+      const first = new MyElement();
+      const second = new MyElement();
+
+      first.label = "first";
+
+      expect(first.label).toBe("first");
+      expect(second.label).toBe("default");
+    });
+
+    it("supports multiple accessors independently", () => {
+      class MyElement extends MockElement {
+        @attr
+        accessor label: string | null = "default label";
+
+        @attr
+        accessor name: string | null = "default name";
+      }
+
+      const element = new MyElement();
+
+      element.label = "next label";
+
+      expect(element.label).toBe("next label");
+      expect(element.name).toBe("default name");
+
+      expect(element.getAttribute("label")).toBe("next label");
+      expect(element.getAttribute("name")).toBeNull();
+    });
+  });
+});
+
+describe("reactive + attr", () => {
+  class ReactiveAttrElement extends MockElement {
+    @reactive
+    @attr
+    accessor label: string | null = "default";
+  }
+
+  class AttrReactiveElement extends MockElement {
+    @attr
+    @reactive
+    accessor label: string | null = "default";
+  }
+
+  describe("@reactive @attr", () => {
+    it("returns the default value when the attribute is absent", () => {
+      const element = new ReactiveAttrElement();
+
+      expect(element.label).toBe("default");
+    });
+
+    it("returns the attribute value when present", () => {
+      const element = new ReactiveAttrElement();
+
+      element.setAttribute("label", "external");
+
+      expect(element.label).toBe("external");
+    });
+
+    it("reflects property changes to the attribute", () => {
+      const element = new ReactiveAttrElement();
+
+      element.label = "updated";
+
+      expect(element.getAttribute("label")).toBe("updated");
+      expect(element.label).toBe("updated");
+    });
+
+    it("removes the attribute when set to null", () => {
+      const element = new ReactiveAttrElement();
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
+    });
+
+    it("tracks reads through the attr decorator", () => {
+      const element = new ReactiveAttrElement();
+      const computed = new Signal.Computed(() => element.label);
+
+      expect(computed.get()).toBe("default");
+
+      element.label = "updated";
+
+      expect(computed.get()).toBe("updated");
+    });
+  });
+
+  describe("@attr @reactive", () => {
+    it("returns the default value when the attribute is absent", () => {
+      const element = new AttrReactiveElement();
+
+      expect(element.label).toBe("default");
+    });
+
+    it("returns the attribute value when present", () => {
+      const element = new AttrReactiveElement();
+
+      element.setAttribute("label", "external");
+
+      expect(element.label).toBe("external");
+    });
+
+    it("reflects property changes to the attribute", () => {
+      const element = new AttrReactiveElement();
+
+      element.label = "updated";
+
+      expect(element.getAttribute("label")).toBe("updated");
+      expect(element.label).toBe("updated");
+    });
+
+    it("removes the attribute when set to null", () => {
+      const element = new AttrReactiveElement();
+
+      element.label = null;
+
+      expect(element.hasAttribute("label")).toBe(false);
+      expect<string | null>(element.label).toBe("default");
+    });
+
+    it("tracks reads through the reactive decorator", () => {
+      const element = new AttrReactiveElement();
+      const computed = new Signal.Computed(() => element.label);
+
+      expect(computed.get()).toBe("default");
+
+      element.label = "updated";
+
+      expect(computed.get()).toBe("updated");
     });
   });
 });
