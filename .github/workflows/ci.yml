@@ -64,5 +64,5 @@ jobs:
       - name: Coverage report
         uses: scttnlsn/covrs@v0
         with:
-          coverage-files: coverage/icov.info
+          coverage-files: coverage/lcov.info
           annotate: true
