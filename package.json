@@ -1,6 +1,8 @@
 {
   "devDependencies": {
-    "@types/bun": "^1.4.4"
+    "@types/bun": "^1.4.4",
+    "@types/jsdom": "^30.0.0",
+    "jsdom": "^31.0.0"
   },
   "dependencies": {
     "signal-polyfill": "^0.2.2"

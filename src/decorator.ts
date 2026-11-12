@@ -235,19 +235,33 @@ export function customElement(
  * Otherwise, it is adopted by the document.
  *
  * @param stylesheet The CSS stylesheet to apply.
- * @returns A class decorator that applies the stylesheet during construction.
+ * @returns A class decorator that applies the stylesheet when the element is connected to the DOM.
  */
 export function style(
   stylesheet: CSSStyleSheet,
-): <T extends new (...args: any[]) => HTMLElement>(value: T) => T {
+): <
+  T extends new (
+    ...args: any[]
+  ) => HTMLElement & { connectedCallback?(): void },
+>(
+  value: T,
+) => T {
   return (value) => {
     return class extends value {
-      constructor(...args: any[]) {
-        super(...args);
+      override connectedCallback(): void {
+        super.connectedCallback?.();
 
-        const root = this.shadowRoot ? this.shadowRoot : document;
-        const sheets = new Set(root.adoptedStyleSheets).add(stylesheet);
-        root.adoptedStyleSheets = sheets.values().toArray();
+        const root = this.shadowRoot ? this.shadowRoot : this.ownerDocument;
+
+        if (!root.adoptedStyleSheets.includes(stylesheet)) {
+          // Use array reassignment instead of `.push()` to maintain compatibility with
+          // older browsers (e.g., Chrome < 99) and DOM test environments (like JSDOM)
+          // where `adoptedStyleSheets` is treated as a frozen array.
+          root.adoptedStyleSheets = [...root.adoptedStyleSheets, stylesheet];
+
+          // TODO(miyauci): Replace if legacy browser support is dropped and test environments fully support mutable arrays.
+          // root.adoptedStyleSheets.push(stylesheet)
+        }
       }
     };
   };
