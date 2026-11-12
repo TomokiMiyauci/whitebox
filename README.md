@@ -1,5 +1,8 @@
 # whitebox
 
+[![JSR](https://jsr.io/badges/@whitebox/core)](https://jsr.io/@whitebox/core)
+[![JSR Score](https://jsr.io/badges/@whitebox/core/score)](https://jsr.io/@whitebox/core/score)
+
 Declarative Web Components.
 
 ## Features
