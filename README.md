@@ -2,6 +2,7 @@
 
 [![JSR](https://jsr.io/badges/@whitebox/core)](https://jsr.io/@whitebox/core)
 [![JSR Score](https://jsr.io/badges/@whitebox/core/score)](https://jsr.io/@whitebox/core/score)
+[![CodeQL](https://github.com/TomokiMiyauci/whitebox/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/TomokiMiyauci/whitebox/actions/workflows/github-code-scanning/codeql)
 
 Declarative Web Components toolkit.
 
