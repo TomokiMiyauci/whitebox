@@ -1,7 +1,8 @@
 import { describe, expect, mock, it, spyOn } from "bun:test";
-import { effect, reactive, attr } from "./decorator.ts";
+import { effect, reactive, attr, style } from "./decorator.ts";
 import Signal from "./signal/mod.ts";
 import { Effect } from "./effect.ts";
+import { JSDOM } from "jsdom";
 
 const flush = () => Promise.resolve();
 
@@ -898,5 +899,225 @@ describe("reactive + attr", () => {
 
       expect(computed.get()).toBe("updated");
     });
+  });
+});
+
+describe("style", () => {
+  it("should adopt the stylesheet to the document", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    document.body.append(document.createElement("my-button"));
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should adopt the stylesheet to the shadow root", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {
+      constructor() {
+        super();
+
+        this.attachShadow({ mode: "open" });
+      }
+    }
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+    document.body.append(element);
+
+    expect(element.shadowRoot?.adoptedStyleSheets).toEqual([css]);
+    expect(document.adoptedStyleSheets).toEqual([]);
+  });
+
+  it("should preserve existing stylesheets", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const existing = new CSSStyleSheet();
+    const css = new CSSStyleSheet();
+
+    document.adoptedStyleSheets = [existing];
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    document.body.append(document.createElement("my-button"));
+
+    expect(document.adoptedStyleSheets).toEqual([existing, css]);
+  });
+
+  it("should not adopt the same stylesheet twice", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+
+    element.remove();
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should call the superclass connectedCallback", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+    const connectedCallback = mock();
+
+    class Base extends HTMLElement {
+      connectedCallback() {
+        connectedCallback();
+      }
+    }
+
+    @style(css)
+    class Test extends Base {}
+
+    customElements.define("my-button", Test);
+
+    document.body.append(document.createElement("my-button"));
+
+    expect(connectedCallback).toHaveBeenCalledOnce();
+  });
+
+  it("should adopt the stylesheet after being connected to the DOM", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    expect(document.adoptedStyleSheets).toEqual([]);
+
+    const element = document.createElement("my-button");
+
+    expect(document.adoptedStyleSheets).toEqual([]);
+
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should adopt the stylesheet again after being reconnected", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+
+    element.remove();
+    document.adoptedStyleSheets = [];
+
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should adopt nly once per document", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+    const element2 = document.createElement("my-button");
+
+    document.body.append(element);
+    document.body.append(element2);
+
+    expect(document.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should adopt the stylesheet to each shadow root", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+
+    @style(css)
+    class Test extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: "open" });
+      }
+    }
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+    const element2 = document.createElement("my-button");
+
+    document.body.append(element);
+    document.body.append(element2);
+
+    expect(element.shadowRoot?.adoptedStyleSheets).toEqual([css]);
+    expect(element2.shadowRoot?.adoptedStyleSheets).toEqual([css]);
+  });
+
+  it("should accept multiple stylesheets", () => {
+    const { window } = new JSDOM("<html><body></body></html>");
+    const { CSSStyleSheet, HTMLElement, document, customElements } = window;
+
+    const css = new CSSStyleSheet();
+    const css2 = new CSSStyleSheet();
+
+    @style(css2)
+    @style(css)
+    class Test extends HTMLElement {}
+
+    customElements.define("my-button", Test);
+
+    const element = document.createElement("my-button");
+
+    document.body.append(element);
+
+    expect(document.adoptedStyleSheets).toEqual([css, css2]);
   });
 });
