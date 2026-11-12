@@ -120,7 +120,11 @@ export function effect<C extends new (...args: any[]) => any>(
 
         // Use a WeakRef to avoid keeping the instance alive through the effect's
         // action closure.
-        const instance = new WeakRef(this);
+        const instance = new WeakRef(this as InstanceType<C>);
+
+        function registerCleanup(callback: VoidFunction): void {
+          cleanup = callback;
+        }
 
         const task = () => {
           const target = instance.deref();
@@ -129,9 +133,7 @@ export function effect<C extends new (...args: any[]) => any>(
           cleanup?.();
           cleanup = undefined;
 
-          action.call(target as InstanceType<C>, (callback) => {
-            cleanup = callback;
-          });
+          action.call(target, registerCleanup);
         };
 
         const scheduler = new MicrotaskScheduler();
