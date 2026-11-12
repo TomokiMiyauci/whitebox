@@ -2,6 +2,24 @@ import { WeakBiMap } from "./map.ts";
 import { Signal as Ponyfill } from "signal-polyfill";
 
 /**
+ * Signal API compliant with [TC39 proposal signals](https://github.com/tc39/proposal-signals).
+ *
+ * @example Basic
+ * ```ts
+ * import Signal from "@whitebox/core/signal";
+ *
+ * const theme = new Signal.State<"light" | "dark">("light");
+ * const isDark = new Signal.Computed(() => theme.get() === "dark");
+ *
+ * theme.set("dark");
+ *
+ * console.log(isDark.get()); // true
+ * ```
+ *
+ * @module
+ */
+
+/**
  * A reactive value.
  */
 interface Signal<T> {
