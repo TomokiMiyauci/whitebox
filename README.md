@@ -81,7 +81,7 @@ class MyButton extends HTMLElement {
 
 ### Signals
 
-Whitebox provides a reactive API based on the TC39 Signals proposal.
+Whitebox provides a reactive API based on the [TC39 proposal signals](https://github.com/tc39/proposal-signals).
 
 Signals are independent of the DOM, Web Components, and rendering frameworks. They can be used in any JavaScript environment.
 
