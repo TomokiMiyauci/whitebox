@@ -1,6 +1,6 @@
 import { describe, it, expect, mock } from "bun:test";
 import Signal from "./signal/mod.ts";
-import { Effect, EffectLifecycle, type Scheduler } from "./effect.ts";
+import { effect, EffectLifecycle, type Scheduler } from "./effect.ts";
 
 class TestScheduler implements Scheduler {
   #queue: VoidFunction[] = [];
@@ -78,7 +78,7 @@ describe("Effect", () => {
     const action = mock();
     const scheduler = new TestScheduler();
 
-    Effect.start(action, scheduler);
+    effect(action, scheduler);
 
     expect(action).toHaveBeenCalledTimes(1);
     expect(scheduler.size).toBe(0);
@@ -89,7 +89,7 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    Effect.start(() => {
+    effect(() => {
       action(count.get());
     }, scheduler);
 
@@ -109,7 +109,7 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    Effect.start(() => {
+    effect(() => {
       action(count.get());
     }, scheduler);
 
@@ -124,11 +124,11 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    const effect = Effect.start(() => {
+    const controller = effect(() => {
       action(count.get());
     }, scheduler);
 
-    effect.pause();
+    controller.pause();
 
     count.set(1);
     scheduler.flush();
@@ -141,13 +141,13 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    const effect = Effect.start(() => {
+    const controller = effect(() => {
       action(count.get());
     }, scheduler);
 
-    effect.pause();
+    controller.pause();
     count.set(1);
-    effect.resume();
+    controller.resume();
 
     expect(action).toHaveBeenCalledTimes(2);
     expect(action).toHaveBeenLastCalledWith(1);
@@ -157,10 +157,10 @@ describe("Effect", () => {
     const action = mock();
     const scheduler = new TestScheduler();
 
-    const effect = Effect.start(action, scheduler);
+    const controller = effect(action, scheduler);
 
-    effect.stop();
-    effect.resume();
+    controller.stop();
+    controller.resume();
 
     expect(action).toHaveBeenCalledTimes(1);
   });
@@ -170,11 +170,11 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    const effect = Effect.start(() => {
+    const controller = effect(() => {
       action(count.get());
     }, scheduler);
 
-    effect.stop();
+    controller.stop();
     count.set(1);
     scheduler.flush();
 
@@ -186,12 +186,12 @@ describe("Effect", () => {
     const scheduler = new TestScheduler();
     const count = new Signal.State(0);
 
-    const effect = Effect.start(() => {
+    const controller = effect(() => {
       action(count.get());
     }, scheduler);
 
     count.set(1);
-    effect.stop();
+    controller.stop();
 
     scheduler.flush();
 
@@ -205,8 +205,8 @@ describe("Effect", () => {
     const first = new Signal.State(0);
     const second = new Signal.State(0);
 
-    Effect.start(() => action(first.get()), scheduler);
-    Effect.start(() => action(second.get()), scheduler);
+    effect(() => action(first.get()), scheduler);
+    effect(() => action(second.get()), scheduler);
 
     first.set(1);
     scheduler.flush();

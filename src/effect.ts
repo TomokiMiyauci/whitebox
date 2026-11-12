@@ -87,66 +87,13 @@ export class EffectLifecycle {
   }
 }
 
-/**
- * Manages the reactive execution lifecycle of an action.
- *
- * An effect tracks the signals accessed by its action and schedules
- * subsequent executions when those signals change.
- */
-export class Effect {
-  #scheduler: Scheduler;
-  #computed: Signal.Computed<void>;
-  #watcher: Signal.subtle.Watcher;
-  #lifecycle = EffectLifecycle.running;
-  #run: () => void;
-
-  private constructor(action: VoidFunction, scheduler: Scheduler) {
-    this.#scheduler = scheduler;
-
-    this.#computed = new Signal.Computed(action);
-
-    const run = (): void => {
-      if (!this.#lifecycle.isRunning) return;
-
-      this.#computed.get();
-
-      for (const signal of this.#watcher.getPending()) {
-        signal.get();
-      }
-
-      this.#watcher.watch(this.#computed);
-    };
-
-    this.#watcher = new Signal.subtle.Watcher(() => {
-      this.#scheduler.schedule(run);
-    });
-    this.#run = run;
-  }
-
-  /**
-   * Creates and immediately starts an effect.
-   *
-   * The action is executed synchronously before this method returns.
-   *
-   * @param action The action to execute and track.
-   * @param scheduler The scheduler used for subsequent executions.
-   * @returns The started effect instance.
-   */
-  static start(action: VoidFunction, scheduler: Scheduler): Effect {
-    const effect = new Effect(action, scheduler);
-    effect.#run();
-
-    return effect;
-  }
-
+export interface EffectController {
   /**
    * Pauses the effect.
    *
    * Scheduled executions are ignored while the effect is paused.
    */
-  pause(): void {
-    this.#lifecycle = EffectLifecycle.pause(this.#lifecycle);
-  }
+  pause(): void;
 
   /**
    * Resumes a paused effect.
@@ -154,22 +101,102 @@ export class Effect {
    * The action is executed immediately to update its dependencies
    * and reflect the latest signal values.
    */
-  resume(): void {
-    if (!this.#lifecycle.isPaused) return;
-
-    this.#lifecycle = EffectLifecycle.resume(this.#lifecycle);
-    this.#run();
-  }
+  resume(): void;
 
   /**
    * Stops the effect permanently.
    *
    * The effect no longer observes its dependencies or executes its action.
    */
+  stop(): void;
+}
+
+/**
+ * Creates and starts a reactive effect.
+ *
+ * @param action The action to execute and track.
+ * @param scheduler The scheduler used for subsequent executions.
+ * @returns The effect controller.
+ */
+export function effect(
+  action: VoidFunction,
+  scheduler: Scheduler,
+): EffectController {
+  const computed = new Signal.Computed(action);
+
+  // Assigned after the Effect instance is created.
+  // The watcher schedules this lifecycle-aware execution.
+  let start: VoidFunction;
+
+  const watcher = new Signal.subtle.Watcher(() => {
+    scheduler.schedule(start);
+  });
+
+  function watch(): void {
+    computed.get();
+
+    // Consume pending signals before registering the computed again.
+    for (const signal of watcher.getPending()) {
+      signal.get();
+    }
+
+    watcher.watch(computed);
+  }
+
+  function unwatch(): void {
+    watcher.unwatch(computed);
+  }
+
+  const instance = new Effect(watch, unwatch);
+  start = instance.start.bind(instance);
+
+  // Execute the action synchronously for initial dependency tracking.
+  start();
+
+  return {
+    stop: instance.stop.bind(instance),
+    resume: instance.resume.bind(instance),
+    pause: instance.pause.bind(instance),
+  };
+}
+
+/**
+ * Manages the reactive execution lifecycle of an action.
+ *
+ * An effect tracks the signals accessed by its action and schedules
+ * subsequent executions when those signals change.
+ */
+export class Effect implements EffectController {
+  #lifecycle = EffectLifecycle.running;
+
+  constructor(
+    private onStart: VoidFunction,
+    private onEnd: VoidFunction,
+  ) {}
+
+  start(): void {
+    // Ignore scheduled executions while paused or after stopping.
+    if (!this.#lifecycle.isRunning) return;
+
+    this.onStart();
+  }
+
+  pause(): void {
+    this.#lifecycle = EffectLifecycle.pause(this.#lifecycle);
+  }
+
+  resume(): void {
+    if (!this.#lifecycle.isPaused) return;
+
+    this.#lifecycle = EffectLifecycle.resume(this.#lifecycle);
+    // Re-execute immediately to refresh dependencies and reflect current values.
+    this.start();
+  }
+
   stop(): void {
     if (this.#lifecycle.isStopped) return;
 
     this.#lifecycle = EffectLifecycle.stop(this.#lifecycle);
-    this.#watcher.unwatch(this.#computed);
+    this.onEnd();
   }
 }

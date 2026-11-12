@@ -1,6 +1,6 @@
 import Signal from "./signal/mod.ts";
 import { MicrotaskScheduler } from "./scheduler.ts";
-import { Effect } from "./effect.ts";
+import { type EffectController, effect as doEffect } from "./effect.ts";
 
 /** Registers a cleanup callback for an effect. */
 export interface RegisterCleanup {
@@ -82,7 +82,7 @@ export function reactive<T extends object, U>(
 // Keep the registry alive for as long as this module is alive.
 // A FinalizationRegistry that becomes unreachable may itself be garbage collected,
 // in which case its finalization callbacks will never be executed.
-const registry = new FinalizationRegistry((effect: Effect) => {
+const registry = new FinalizationRegistry((effect: EffectController) => {
   effect.stop();
 });
 
@@ -135,7 +135,7 @@ export function effect<C extends new (...args: any[]) => any>(
         };
 
         const scheduler = new MicrotaskScheduler();
-        const effect = Effect.start(task, scheduler);
+        const effect = doEffect(task, scheduler);
 
         // Stop the effect when the instance is garbage collected.
         // The effect must not strongly reference the instance, directly or indirectly.
