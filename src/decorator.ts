@@ -254,11 +254,11 @@ export function style(
 }
 
 /**
- * Attaches an open Shadow DOM to the custom element.
+ * Attaches an Shadow DOM to the element.
  *
  * @returns A class decorator that ensures the element has a shadow root.
  */
-export function shadowHost<T extends new (...args: any[]) => HTMLElement>(
+export function shadowHost<T extends new (...args: any[]) => Element>(
   value: T,
 ): T {
   return class extends value {
