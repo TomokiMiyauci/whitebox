@@ -21,7 +21,7 @@ Install the core package:
 npx jsr add @whitebox/core
 ```
 
-Choose a renderer:
+Choose a renderer(optional):
 
 ### React
 
