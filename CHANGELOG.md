@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2](https://github.com/TomokiMiyauci/whitebox/compare/v0.4.1...v0.4.2) (2026-11-13)
+
+
+### Features
+
+* adopt stylesheets when custom elements are connected ([#29](https://github.com/TomokiMiyauci/whitebox/issues/29)) ([c2c59b0](https://github.com/TomokiMiyauci/whitebox/commit/c2c59b0cb726a419de73ad86d2404885955b33ca))
+* relax shadowHost generic constraints to `Element` ([#26](https://github.com/TomokiMiyauci/whitebox/issues/26)) ([c145016](https://github.com/TomokiMiyauci/whitebox/commit/c145016369fb2f5639e01bb82f2eddfe19d68bee))
+
 ## [0.4.1](https://github.com/TomokiMiyauci/whitebox/compare/v0.4.0...v0.4.1) (2026-11-10)
 
 
