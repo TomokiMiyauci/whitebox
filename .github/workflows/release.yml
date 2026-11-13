@@ -13,7 +13,7 @@ jobs:
 
     outputs:
       release-created: ${{ steps.release.outputs.release_created }}
-      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
 
     steps:
       - name: Release Please
@@ -23,20 +23,6 @@ jobs:
   publish:
     needs: release-please
     if: ${{ needs.release-please.outputs.release-created == 'true' }}
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Publish to JSR
-        run: bun x jsr publish
+    uses: ./.github/workflows/publish.yml
+    with:
+      ref: v${{ needs.release-please.outputs.sha }}
