@@ -26,3 +26,6 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       ref: v${{ needs.release-please.outputs.sha }}
+    permissions:
+      contents: read
+      id-token: write
