@@ -2,6 +2,7 @@
 
 [![JSR](https://jsr.io/badges/@whitebox/core)](https://jsr.io/@whitebox/core)
 [![JSR Score](https://jsr.io/badges/@whitebox/core/score)](https://jsr.io/@whitebox/core/score)
+[![CodeQL](https://github.com/TomokiMiyauci/whitebox/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/TomokiMiyauci/whitebox/actions/workflows/github-code-scanning/codeql)
 
 Declarative Web Components toolkit.
 
@@ -20,7 +21,7 @@ Install the core package:
 npx jsr add @whitebox/core
 ```
 
-Choose a renderer:
+Choose a renderer(optional):
 
 ### React
 
@@ -80,7 +81,7 @@ class MyButton extends HTMLElement {
 
 ### Signals
 
-Whitebox provides a reactive API based on the TC39 Signals proposal.
+Whitebox provides a reactive API based on the [TC39 proposal signals](https://github.com/tc39/proposal-signals).
 
 Signals are independent of the DOM, Web Components, and rendering frameworks. They can be used in any JavaScript environment.
 
