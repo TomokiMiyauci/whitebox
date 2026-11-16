@@ -25,7 +25,7 @@ jobs:
     if: ${{ needs.release-please.outputs.release-created == 'true' }}
     uses: ./.github/workflows/publish.yml
     with:
-      ref: v${{ needs.release-please.outputs.sha }}
+      ref: ${{ needs.release-please.outputs.sha }}
     permissions:
       contents: read
       id-token: write
