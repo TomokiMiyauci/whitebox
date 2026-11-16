@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "2.1.0",
+  "modules": [
+    {
+      "kind": "javascript-module",
+      "source": "src/mod.ts",
+      "path": "src/mod.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "customElement": true,
+          "name": "MyBytton",
+          "tagName": "my-button",
+          "members": [
+            {
+              "kind": "field",
+              "name": "label",
+              "description": "The button label.",
+              "default": "null",
+              "type": {
+                "text": "string | null"
+              }
+            }
+          ],
+          "attributes": [
+            {
+              "name": "label",
+              "description": "The button label.",
+              "type": {
+                "text": "string | null"
+              },
+              "default": "null",
+              "fieldName": "label"
+            }
+          ],
+          "cssProperties": [
+            {
+              "name": "--accent-color",
+              "description": "Button accent color.",
+              "default": "red"
+            }
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "kind": "custom-element-definition",
+          "name": "my-button",
+          "declaration": {
+            "name": "MyBytton",
+            "module": "src/mod.js"
+          }
+        }
+      ]
+    }
+  ]
+}

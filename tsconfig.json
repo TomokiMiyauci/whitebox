@@ -15,5 +15,5 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true
   },
-  "exclude": ["src/signal/signal_polyfill/**"]
+  "exclude": ["src/signal/signal_polyfill/**", "examples/**"]
 }

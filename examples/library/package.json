@@ -1,0 +1,15 @@
+{
+  "exports": "./src/mod.ts",
+  "dependencies": {
+    "@whitebox/core": "link:../.."
+  },
+  "devDependencies": {
+    "@wc-toolkit/cem-generator": "^0.2.10",
+    "@wc-toolkit/cem-generator-cli": "^0.3.4",
+    "@whitebox/cem-generator-plugin": "npm:@jsr/whitebox__cem-generator-plugin@^0.1.0"
+  },
+  "scripts": {
+    "generate": "cem generate"
+  },
+  "customElements": "custom-elements.json"
+}
