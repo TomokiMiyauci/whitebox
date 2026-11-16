@@ -1,4 +1,8 @@
 {
+  "name": "@whitebox/core",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/jsdom": "^30.0.0",
