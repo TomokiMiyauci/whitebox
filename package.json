@@ -13,6 +13,7 @@
   },
   "scripts": {
     "apply-patch": "git -C src/signal/signal_polyfill apply ../patches/signal_polyfill.patch",
-    "check": "bun fmt --check && bun check && bun test"
+    "check": "bun fmt --check && bun check && bun test",
+    "check:fmt": "bun fmt --check"
   }
 }

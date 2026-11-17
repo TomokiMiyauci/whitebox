@@ -24,14 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
       - name: Format Check
-        run: bun fmt --check
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: bun run check:fmt
 
   # lint:
   #   runs-on: ubuntu-latest
