@@ -31,5 +31,5 @@ To help ensure a smooth review and merge process, please consider the following:
 - Running the following development checks locally.
 
 ```sh
-bun run check
+task check
 ```

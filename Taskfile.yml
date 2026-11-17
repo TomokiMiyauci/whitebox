@@ -1,0 +1,46 @@
+version: "3"
+
+tasks:
+  test:
+    desc: Test all cases
+    cmds:
+      - bun test
+    silent: true
+
+  check:fmt:
+    desc: Check by fomatter
+    cmds:
+      - bun fmt --check
+    silent: true
+
+  check:type:
+    desc: Check by type checker
+    cmds:
+      - bun check
+    silent: true
+
+  check:
+    desc: Check all
+    cmds:
+      - task: check:fmt
+      - task: check:type
+      - task: test
+    silent: true
+
+  apply-patch:
+    desc: Apply submodule's patch
+    cmds:
+      - git -C src/signal/signal_polyfill apply ../patches/signal_polyfill.patch
+    silent: true
+
+  test:coverage:
+    desc: Do test and generate coverage report
+    vars:
+      COVERAGE_DIR: "{{.COVERAGE_DIR}}"
+    cmds:
+      - bun test --coverage --coverage-reporter=lcov --coverage-dir={{.COVERAGE_DIR}}
+
+  publish:
+    desc: Publish to JSR
+    cmds:
+      - bun x jsr publish

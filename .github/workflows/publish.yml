@@ -27,11 +27,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
       - name: Publish to JSR
-        run: bun x jsr publish
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: task publish
