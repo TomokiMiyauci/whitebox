@@ -39,3 +39,8 @@ tasks:
       COVERAGE_DIR: "{{.COVERAGE_DIR}}"
     cmds:
       - bun test --coverage --coverage-reporter=lcov --coverage-dir={{.COVERAGE_DIR}}
+
+  publish:
+    desc: Publish to JSR
+    cmds:
+      - bun x jsr publish
