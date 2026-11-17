@@ -27,7 +27,7 @@ jobs:
       - name: Format Check
         uses: devcontainers/ci@v0.3
         with:
-          runCmd: task check-fmt
+          runCmd: task check:fmt
 
   # lint:
   #   runs-on: ubuntu-latest
