@@ -27,7 +27,7 @@ jobs:
       - name: Format Check
         uses: devcontainers/ci@v0.3
         with:
-          runCmd: bun run check:fmt
+          runCmd: task check-fmt
 
   # lint:
   #   runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
       - name: Format Check
         uses: devcontainers/ci@v0.3
         with:
-          runCmd: bun check
+          runCmd: task check:type
 
   test:
     permissions:
@@ -68,7 +68,9 @@ jobs:
       - name: Test
         uses: devcontainers/ci@v0.3
         with:
-          runCmd: bun run apply-patch && bun test --coverage --coverage-reporter=lcov
+          runCmd: |
+            task apply-patch 
+            task test:coverage COVERAGE_DIR=coverage
 
       - name: Coverage report
         uses: scttnlsn/covrs@v0

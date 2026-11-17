@@ -3,13 +3,18 @@
   "image": "oven/bun",
   "customizations": {
     "vscode": {
-      "extensions": ["oven.bun-vscode", "esbenp.prettier-vscode"]
+      "extensions": [
+        "oven.bun-vscode",
+        "esbenp.prettier-vscode",
+        "task.vscode-task"
+      ]
     }
   },
   "features": {
     "ghcr.io/devcontainers/features/git:1.3.8": {
       "version": "system"
-    }
+    },
+    "ghcr.io/eitsupi/devcontainer-features/go-task:1": {}
   },
   "postCreateCommand": "bun ci"
 }
