@@ -1,4 +1,4 @@
-name: CI
+name: Pull Request
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - edited
       - synchronize
       - reopened
-      
+
     branches:
       - main
 
